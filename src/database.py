@@ -17,13 +17,73 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 def backup_database(db_path: Path = DB_PATH, backup_dir: Path = BACKUP_DIR) -> Path:
     """Copy the SQLite database file to the backups directory."""
     if not db_path.exists():
-        raise FileNotFoundError(f"バックアップ対象のDBファイルが見つかりません: {db_path}")
+        raise FileNotFoundError(
+            f"バックアップ対象のDBファイルが見つかりません: {db_path}"
+        )
 
     backup_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = backup_dir / f"inventory_{timestamp}.db"
     shutil.copy2(db_path, backup_path)
     return backup_path
+
+
+def list_backup_files(backup_dir: Path = BACKUP_DIR) -> list[dict[str, object]]:
+    """Return .db backup files ordered by newest modification time first."""
+    if not backup_dir.exists():
+        return []
+
+    backup_files = []
+    for backup_path in backup_dir.glob("*.db"):
+        if not backup_path.is_file():
+            continue
+
+        stat = backup_path.stat()
+        backup_files.append(
+            {
+                "filename": backup_path.name,
+                "path": backup_path,
+                "updated_at": datetime.fromtimestamp(stat.st_mtime),
+                "size": stat.st_size,
+            }
+        )
+
+    return sorted(
+        backup_files,
+        key=lambda backup_file: backup_file["updated_at"],
+        reverse=True,
+    )
+
+
+def restore_database_from_backup(
+    backup_path: str | Path,
+    db_path: Path = DB_PATH,
+    backup_dir: Path = BACKUP_DIR,
+) -> dict[str, Path]:
+    """Restore the SQLite database from a backup after saving the current DB."""
+    source_path = Path(backup_path)
+    if not source_path.exists():
+        raise FileNotFoundError(
+            f"復旧元のバックアップDBが見つかりません: {source_path}"
+        )
+    if not source_path.is_file():
+        raise ValueError(f"復旧元がファイルではありません: {source_path}")
+    if not db_path.exists():
+        raise FileNotFoundError(f"復旧対象のDBファイルが見つかりません: {db_path}")
+
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    before_restore_path = backup_dir / f"before_restore_{timestamp}.db"
+
+    shutil.copy2(db_path, before_restore_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, db_path)
+
+    return {
+        "restored_path": db_path,
+        "source_path": source_path,
+        "before_restore_path": before_restore_path,
+    }
 
 
 def get_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
@@ -211,8 +271,7 @@ def delete_item(item_id: str, db_path: Path = DB_PATH) -> None:
 def list_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
     """Return all items ordered by item_id."""
     with get_connection(db_path) as connection:
-        rows = connection.execute(
-            """
+        rows = connection.execute("""
             SELECT
                 item_id,
                 item_name,
@@ -226,8 +285,7 @@ def list_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
                 note
             FROM items
             ORDER BY item_id ASC
-            """
-        ).fetchall()
+            """).fetchall()
     return rows
 
 
@@ -387,12 +445,10 @@ def _import_items_from_csv_with_encoding(
     }
 
 
-
 def list_low_stock_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
     """Return items where current stock is less than or equal to minimum stock."""
     with get_connection(db_path) as connection:
-        rows = connection.execute(
-            """
+        rows = connection.execute("""
             SELECT
                 item_id,
                 item_name,
@@ -409,9 +465,10 @@ def list_low_stock_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
             FROM items
             WHERE current_stock <= min_stock
             ORDER BY shortage_quantity DESC, item_id ASC
-            """
-        ).fetchall()
+            """).fetchall()
     return rows
+
+
 def find_item_by_id(item_id: str, db_path: Path = DB_PATH) -> Optional[sqlite3.Row]:
     """Find a single item by its item_id or qr_code."""
     with get_connection(db_path) as connection:

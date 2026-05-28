@@ -11,8 +11,10 @@ from database import (
     increase_stock,
     import_items_from_csv,
     initialize_database,
+    list_backup_files,
     list_items,
     list_low_stock_items,
+    restore_database_from_backup,
     update_item,
 )
 
@@ -117,11 +119,12 @@ def edit_item() -> None:
 
     item_name = input(f"品名 [{item['item_name']}]: ").strip() or item["item_name"]
     model_number = (
-        input(f"型式 [{item['model_number'] or ''}]: ").strip()
-        or item["model_number"]
+        input(f"型式 [{item['model_number'] or ''}]: ").strip() or item["model_number"]
     )
     maker = input(f"メーカー [{item['maker'] or ''}]: ").strip() or item["maker"]
-    location = input(f"保管場所 [{item['location'] or ''}]: ").strip() or item["location"]
+    location = (
+        input(f"保管場所 [{item['location'] or ''}]: ").strip() or item["location"]
+    )
     unit = input(f"単位 [{item['unit'] or ''}]: ").strip() or item["unit"]
     min_stock_raw = input(f"最低在庫数 [{item['min_stock']}]: ").strip()
     note = input(f"備考 [{item['note'] or ''}]: ").strip() or item["note"]
@@ -151,7 +154,9 @@ def remove_item() -> None:
         print(f"品目ID '{item_id}' は見つかりませんでした。")
         return
 
-    confirmation = input(f"削除するには {item['item_id']} をもう一度入力してください: ").strip()
+    confirmation = input(
+        f"削除するには {item['item_id']} をもう一度入力してください: "
+    ).strip()
     if confirmation != item["item_id"]:
         print("確認入力が一致しないため、削除を中止しました。")
         return
@@ -301,6 +306,49 @@ def create_database_backup() -> None:
     print(backup_path)
 
 
+def restore_database_menu() -> None:
+    print("--- DB復旧 ---")
+    backup_files = list_backup_files()
+    if not backup_files:
+        print("backups フォルダに復旧可能な .db バックアップがありません。")
+        return
+
+    for index, backup_file in enumerate(backup_files, start=1):
+        updated_at = backup_file["updated_at"].strftime("%Y-%m-%d %H:%M:%S")
+        size = backup_file["size"]
+        print(
+            f"{index}. {backup_file['filename']} | 更新日時:{updated_at} | サイズ:{size} bytes"
+        )
+
+    selected_text = input("復旧するバックアップ番号を選択してください: ").strip()
+    try:
+        selected_index = int(selected_text)
+    except ValueError:
+        print("エラー: バックアップ番号は数値で入力してください。")
+        return
+
+    if selected_index < 1 or selected_index > len(backup_files):
+        print("エラー: 選択されたバックアップ番号が一覧の範囲外です。")
+        return
+
+    selected_backup = backup_files[selected_index - 1]
+    print("この操作は現在のDBを上書きします。")
+    confirmation = input("復旧するには RESTORE と入力してください: ").strip()
+    if confirmation != "RESTORE":
+        print("確認入力が一致しないため、DB復旧を中止しました。")
+        return
+
+    try:
+        result = restore_database_from_backup(selected_backup["path"])
+    except (FileNotFoundError, ValueError) as error:
+        print(f"エラー: {error}")
+        return
+
+    print("DBを復旧しました:")
+    print(f"復旧元: {result['source_path']}")
+    print(f"復旧前退避: {result['before_restore_path']}")
+
+
 def main() -> None:
     initialize_database()
     print("=== Inventory CUI Menu ===")
@@ -318,6 +366,7 @@ def main() -> None:
         print("10. CSV品目マスタ取込")
         print("11. 棚卸修正")
         print("12. DBバックアップ")
+        print("13. DB復旧")
         print("q. 終了")
         choice = input("メニューを選択してください: ").strip().lower()
 
@@ -348,8 +397,10 @@ def main() -> None:
             stock_adjustment()
         elif choice == "12":
             create_database_backup()
+        elif choice == "13":
+            restore_database_menu()
         else:
-            print("無効な選択です。1-12 または q を入力してください。")
+            print("無効な選択です。1-13 または q を入力してください。")
 
 
 if __name__ == "__main__":
