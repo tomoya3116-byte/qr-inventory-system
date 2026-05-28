@@ -311,6 +311,23 @@ def list_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
     return rows
 
 
+def get_item_for_qr(item_id: str, db_path: Path = DB_PATH) -> Optional[sqlite3.Row]:
+    """Return the minimum item fields needed for QR code generation."""
+    with get_connection(db_path) as connection:
+        row = connection.execute(
+            """
+            SELECT
+                item_id,
+                item_name,
+                qr_code
+            FROM items
+            WHERE item_id = ?
+            """,
+            (item_id,),
+        ).fetchone()
+    return row
+
+
 CSV_ENCODINGS = ("utf-8-sig", "utf-8", "cp932", "shift_jis")
 CSV_ENCODING_ERROR_MESSAGE = (
     "CSVの文字コードを読み取れませんでした。UTF-8またはShift-JISで保存してください。"
