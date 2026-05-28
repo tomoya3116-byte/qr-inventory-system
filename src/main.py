@@ -1,6 +1,7 @@
 """Menu-driven CUI for inventory search and stock operations."""
 
 from database import (
+    adjust_stock,
     create_item,
     decrease_stock,
     delete_item,
@@ -56,8 +57,6 @@ def show_item_list() -> None:
             f"| メーカー:{row['maker'] or '-'} | 保管:{row['location'] or '-'} "
             f"| 単位:{row['unit'] or '-'} | 最低在庫:{row['min_stock']} | 現在庫:{row['current_stock']}"
         )
-
-
 
 
 def show_low_stock_alert() -> None:
@@ -116,7 +115,10 @@ def edit_item() -> None:
         return
 
     item_name = input(f"品名 [{item['item_name']}]: ").strip() or item["item_name"]
-    model_number = input(f"型式 [{item['model_number'] or ''}]: ").strip() or item["model_number"]
+    model_number = (
+        input(f"型式 [{item['model_number'] or ''}]: ").strip()
+        or item["model_number"]
+    )
     maker = input(f"メーカー [{item['maker'] or ''}]: ").strip() or item["maker"]
     location = input(f"保管場所 [{item['location'] or ''}]: ").strip() or item["location"]
     unit = input(f"単位 [{item['unit'] or ''}]: ").strip() or item["unit"]
@@ -188,6 +190,54 @@ def stock_out() -> None:
         print(f"エラー: {error}")
 
 
+def stock_adjustment() -> None:
+    print("--- 棚卸修正 ---")
+    item_id = input("品目IDを入力してください: ").strip()
+    if not item_id:
+        print("品目IDが空です。")
+        return
+
+    item = find_item_by_id(item_id)
+    if item is None:
+        print(f"品目ID '{item_id}' は見つかりませんでした。")
+        return
+
+    actual_stock_text = input("実在庫数を入力してください: ").strip()
+    operator = input("作業者を入力してください（任意）: ").strip()
+    note = input("備考を入力してください（任意）: ").strip()
+
+    try:
+        actual_stock = int(actual_stock_text)
+        if actual_stock < 0:
+            raise ValueError("実在庫数は0以上を指定してください。")
+    except ValueError as error:
+        print(f"エラー: {error}")
+        return
+
+    current_stock = int(item["current_stock"])
+    difference = actual_stock - current_stock
+
+    print("--- 棚卸修正内容確認 ---")
+    print(f"品目ID: {item['item_id']}")
+    print(f"品名: {item['item_name']}")
+    print(f"現在庫: {current_stock}")
+    print(f"実在庫: {actual_stock}")
+    print(f"差異: {difference}")
+
+    confirmation = input("この内容で棚卸修正しますか？ y/n: ").strip().lower()
+    if confirmation != "y":
+        print("棚卸修正を中止しました。")
+        return
+
+    try:
+        stock_after = adjust_stock(
+            item["item_id"], actual_stock, operator=operator, note=note
+        )
+        print(f"棚卸修正を記録しました。処理後現在庫: {stock_after}")
+    except ValueError as error:
+        print(f"エラー: {error}")
+
+
 def show_transactions() -> None:
     item_id = prompt_item_id()
     if not item_id:
@@ -204,12 +254,13 @@ def show_transactions() -> None:
         print("履歴がありません。")
         return
 
-    print("--- 入出庫履歴（新しい順）---")
+    print("--- 入出庫・棚卸履歴（新しい順）---")
     for row in rows:
         print(
             f"[{row['transaction_date']}] {row['transaction_type']} 数量:{row['quantity']} "
             f"処理後在庫:{row['stock_after']} 作業者:{row['operator'] or '-'} 備考:{row['note'] or '-'}"
         )
+
 
 def import_item_master_csv() -> None:
     print("--- CSV品目マスタ取込 ---")
@@ -252,6 +303,7 @@ def main() -> None:
         print("8. 品目削除")
         print("9. 最低在庫アラート")
         print("10. CSV品目マスタ取込")
+        print("11. 棚卸修正")
         print("q. 終了")
         choice = input("メニューを選択してください: ").strip().lower()
 
@@ -278,8 +330,10 @@ def main() -> None:
             show_low_stock_alert()
         elif choice == "10":
             import_item_master_csv()
+        elif choice == "11":
+            stock_adjustment()
         else:
-            print("無効な選択です。1-10 または q を入力してください。")
+            print("無効な選択です。1-11 または q を入力してください。")
 
 
 if __name__ == "__main__":

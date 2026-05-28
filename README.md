@@ -5,7 +5,7 @@ QR code based inventory management system using Python and SQLite.
 ## 概要
 
 業務用の貯蔵品管理を想定した、CUIベースの在庫管理システムです。
-品目IDまたはQRコードを入力して検索し、入庫・出庫・履歴確認に加えて、品目マスタの一覧・登録・編集・削除を行えます。
+品目IDまたはQRコードを入力して検索し、入庫・出庫・棚卸修正・履歴確認に加えて、品目マスタの一覧・登録・編集・削除を行えます。
 
 ## セットアップ
 
@@ -37,7 +37,7 @@ python3 src/main.py
 
 - `transaction_id` (INTEGER, PK AUTOINCREMENT)
 - `item_id` (TEXT, NOT NULL)
-- `transaction_type` (TEXT, NOT NULL) ※ IN / OUT
+- `transaction_type` (TEXT, NOT NULL) ※ IN / OUT / ADJUST
 - `quantity` (INTEGER, NOT NULL)
 - `stock_after` (INTEGER, NOT NULL)
 - `operator` (TEXT)
@@ -63,6 +63,7 @@ python3 src/main.py
 8. 品目削除
 9. 最低在庫アラート
 10. CSV品目マスタ取込
+11. 棚卸修正
 q. 終了
 
 ## 動作確認例
@@ -75,9 +76,11 @@ q. 終了
    - `current_stock` が 10 → 13 に増える
 3. **出庫**: `3` → `ITEM-0001` → `4`（任意で作業者・備考入力）
    - `current_stock` が 13 → 9 に減る
-4. **履歴表示**: `4` → `ITEM-0001`
-   - `IN` と `OUT` の履歴が表示される
-5. **在庫不足確認**: `3` → `ITEM-0001` → `1000`
+4. **棚卸修正**: `11` → `ITEM-0001` → `11` → 作業者・備考入力 → 確認画面で `y`
+   - `current_stock` が実在庫数 `11` に更新され、差異数量の `ADJUST` 履歴が記録される
+5. **履歴表示**: `4` → `ITEM-0001`
+   - `IN` / `OUT` / `ADJUST` の履歴が表示される
+6. **在庫不足確認**: `3` → `ITEM-0001` → `1000`
    - 在庫不足エラーが表示され、在庫はマイナスにならない
 
 ## 補足
@@ -111,6 +114,24 @@ q. 終了
 3. `9`（最低在庫アラート）を選択
 4. `ITEM-0001` がアラート一覧に表示されることを確認
 
+
+### 棚卸修正
+
+- メニュー `11` を選択すると、実在庫数を入力してシステム在庫を修正できます。
+- 入力項目: 品目ID / 実在庫数 / 作業者 / 備考
+- 修正前に、品目ID / 品名 / 現在庫 / 実在庫 / 差異 が表示されます。
+- `この内容で棚卸修正しますか？ y/n` で `y` を入力した場合のみ、`items.current_stock` が実在庫数に更新されます。
+- 棚卸修正は `transactions.transaction_type = ADJUST` として履歴に保存されます。
+- `transactions.quantity` には差異数量が保存されます。例: 現在庫 `13` を実在庫 `11` に修正した場合、`quantity = -2` です。
+- `transactions.stock_after` には修正後在庫（実在庫数）が保存され、作業者と備考も履歴に残ります。
+
+#### 棚卸修正の動作確認例
+
+1. `python3 src/main.py` を実行
+2. メニュー `11`（棚卸修正）を選択
+3. 品目IDに `ITEM-0001`、実在庫数に `11`、必要に応じて作業者・備考を入力
+4. 確認画面で差異を確認し、`y` を入力
+5. メニュー `4`（入出庫履歴表示）で `ITEM-0001` を指定し、`ADJUST` 履歴が表示されることを確認
 
 ### CSV品目マスタ取込
 
