@@ -503,6 +503,45 @@ def decrease_stock(
     return stock_after
 
 
+def adjust_stock(
+    item_id: str,
+    actual_stock: int,
+    operator: str = "",
+    note: str = "",
+    db_path: Path = DB_PATH,
+) -> int:
+    """Set item stock to the actual counted quantity and record an ADJUST transaction."""
+    if actual_stock < 0:
+        raise ValueError("実在庫数は0以上を指定してください。")
+
+    with get_connection(db_path) as connection:
+        item = connection.execute(
+            "SELECT item_id, current_stock FROM items WHERE item_id = ? OR qr_code = ?",
+            (item_id, item_id),
+        ).fetchone()
+        if item is None:
+            raise ValueError(f"品目ID '{item_id}' は存在しません。")
+
+        current_stock = int(item["current_stock"])
+        difference = actual_stock - current_stock
+        connection.execute(
+            "UPDATE items SET current_stock = ? WHERE item_id = ?",
+            (actual_stock, item["item_id"]),
+        )
+        connection.execute(
+            """
+            INSERT INTO transactions
+                (item_id, transaction_type, quantity, stock_after, operator, note)
+            VALUES
+                (?, 'ADJUST', ?, ?, ?, ?)
+            """,
+            (item["item_id"], difference, actual_stock, operator, note),
+        )
+        connection.commit()
+
+    return actual_stock
+
+
 def get_transactions_by_item_id(
     item_id: str, db_path: Path = DB_PATH
 ) -> list[sqlite3.Row]:
