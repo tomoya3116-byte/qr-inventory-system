@@ -1,18 +1,24 @@
 CREATE TABLE IF NOT EXISTS items (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    quantity INTEGER NOT NULL DEFAULT 0,
+    item_id TEXT PRIMARY KEY,
+    item_name TEXT NOT NULL,
+    model_number TEXT,
+    maker TEXT,
     location TEXT,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    unit TEXT,
+    min_stock INTEGER DEFAULT 0,
+    current_stock INTEGER DEFAULT 0,
+    qr_code TEXT UNIQUE,
+    note TEXT
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
     item_id TEXT NOT NULL,
     transaction_type TEXT NOT NULL,
     quantity INTEGER NOT NULL,
+    stock_after INTEGER NOT NULL,
+    operator TEXT,
+    transaction_date TEXT DEFAULT CURRENT_TIMESTAMP,
     note TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (item_id) REFERENCES items(id)
+    FOREIGN KEY (item_id) REFERENCES items(item_id)
 );
