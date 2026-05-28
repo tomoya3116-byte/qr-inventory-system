@@ -1,0 +1,4 @@
+item_id,item_name,model_number,maker,location,unit,min_stock,current_stock,qr_code,note
+ITEM-0001,ベアリング,ABC-123,メーカーA,棚A-01,個,2,10,ITEM-0001,テスト用サンプル
+ITEM-0002,Vベルト,VB-456,メーカーB,棚B-02,本,1,5,ITEM-0002,テスト用サンプル
+ITEM-0003,テストモーター,MOTOR-001,メーカーC,棚C-03,台,1,2,ITEM-0003,CSV取込テスト
