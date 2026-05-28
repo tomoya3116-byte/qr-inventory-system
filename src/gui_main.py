@@ -2,24 +2,37 @@
 
 from __future__ import annotations
 
+import os
 import tkinter as tk
-from tkinter import messagebox, ttk
+import webbrowser
+from datetime import datetime
+from pathlib import Path
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Callable, Iterable
 
 import customtkinter as ctk
 
 from database import (
     adjust_stock,
+    backup_database,
     create_auto_backup,
     create_item,
     decrease_stock,
+    delete_item,
     find_item_by_id,
+    get_item_for_qr,
+    import_items_from_csv,
     increase_stock,
     initialize_database,
+    list_backup_files,
     list_items,
     list_low_stock_items,
+    preview_import_items_from_csv,
+    restore_database_from_backup,
     update_item,
 )
+from label_utils import LABEL_DIR, generate_qr_label_sheet
+from qr_utils import QR_CODE_DIR, generate_all_qr_codes, generate_item_qr_code
 
 APP_TITLE = "貯蔵品管理システム"
 WINDOW_SIZE = "1180x760"
@@ -100,6 +113,10 @@ class InventoryApp(ctk.CTk):
 
         self.menu_buttons: dict[str, ctk.CTkButton] = {}
         self.current_screen = ""
+        self.admin_mode = False
+        # このパスワード方式は簡易ロックです。本格運用では環境変数、設定ファイルのハッシュ化、OSアカウント権限などを検討してください。
+        self.admin_password = os.getenv("QR_INVENTORY_ADMIN_PASSWORD", "admin123")
+        self.menu_frame: ctk.CTkFrame | None = None
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -119,36 +136,57 @@ class InventoryApp(ctk.CTk):
         self.show_search_screen()
 
     def _build_menu(self) -> None:
+        if self.menu_frame is not None:
+            self.menu_frame.destroy()
+        self.menu_buttons = {}
+
         menu = ctk.CTkFrame(self, width=250, fg_color=COLOR_BACKGROUND, corner_radius=0)
         menu.grid(row=0, column=0, sticky="ns", padx=(24, 18), pady=24)
         menu.grid_propagate(False)
         menu.grid_columnconfigure(0, weight=1)
+        self.menu_frame = menu
 
+        title = "貯蔵品\n管理システム"
+        if self.admin_mode:
+            title += "\n管理者モード"
         ctk.CTkLabel(
             menu,
-            text="貯蔵品\n管理システム",
+            text=title,
             font=FONT_TITLE,
             text_color=COLOR_TEXT,
             justify="left",
-        ).grid(row=0, column=0, sticky="w", pady=(4, 30))
+        ).grid(row=0, column=0, sticky="w", pady=(4, 24))
 
-        menu_items: list[tuple[str, str, Callable[[], None]]] = [
-            ("search", "品目検索", self.show_search_screen),
-            ("list", "品目一覧", self.show_list_screen),
-            ("in", "入庫", self.show_stock_in_screen),
-            ("out", "出庫", self.show_stock_out_screen),
-            ("alert", "最低在庫アラート", self.show_low_stock_screen),
-            ("create", "品目登録", self.show_item_create_screen),
-            ("edit", "品目編集", self.show_item_edit_screen),
-            ("adjust", "棚卸修正", self.show_stock_adjust_screen),
-        ]
+        if self.admin_mode:
+            menu_items: list[tuple[str, str, Callable[[], None]]] = [
+                ("create", "品目登録", self.show_item_create_screen),
+                ("edit", "品目編集", self.show_item_edit_screen),
+                ("delete", "品目削除", self.show_item_delete_screen),
+                ("adjust", "棚卸修正", self.show_stock_adjust_screen),
+                ("csv", "CSV品目マスタ取込", self.show_csv_import_screen),
+                ("csv_preview", "CSV取込プレビュー", self.show_csv_import_screen),
+                ("qr", "QRコード生成", self.show_qr_generation_screen),
+                ("labels", "QRコード印刷HTML", self.show_label_html_screen),
+                ("backup", "DBバックアップ", self.show_db_backup_screen),
+                ("restore", "DB復旧", self.show_db_restore_screen),
+            ]
+        else:
+            menu_items = [
+                ("search", "品目検索", self.show_search_screen),
+                ("list", "品目一覧", self.show_list_screen),
+                ("in", "入庫", self.show_stock_in_screen),
+                ("out", "出庫", self.show_stock_out_screen),
+                ("alert", "最低在庫アラート", self.show_low_stock_screen),
+            ]
 
+        button_height = 38 if self.admin_mode else 42
+        button_pady = 3 if self.admin_mode else 4
         for row, (key, label, command) in enumerate(menu_items, start=1):
             button = ctk.CTkButton(
                 menu,
                 text=label,
                 command=command,
-                height=44,
+                height=button_height,
                 corner_radius=16,
                 border_width=1,
                 border_color=COLOR_BORDER,
@@ -158,17 +196,82 @@ class InventoryApp(ctk.CTk):
                 font=FONT_BODY_BOLD,
                 anchor="w",
             )
-            button.grid(row=row, column=0, sticky="ew", pady=5)
+            button.grid(row=row, column=0, sticky="ew", pady=button_pady)
             self.menu_buttons[key] = button
+
+        bottom_row = len(menu_items) + 2
+        if self.admin_mode:
+            self._secondary_button(menu, "管理者モード終了", self.exit_admin_mode).grid(
+                row=bottom_row, column=0, sticky="ew", pady=(18, 0)
+            )
+            note = "危険操作・管理操作は\n確認してから実行してください。"
+        else:
+            self._primary_button(menu, "管理者メニュー", self.request_admin_login).grid(
+                row=bottom_row, column=0, sticky="ew", pady=(18, 0)
+            )
+            note = "日常操作だけをまとめた\n現場向け画面です。"
 
         ctk.CTkLabel(
             menu,
-            text="日常操作だけをまとめた\n現場向け画面です。",
+            text=note,
             font=FONT_SMALL,
             text_color=COLOR_MUTED,
             justify="left",
         ).grid(row=99, column=0, sticky="sw", pady=(36, 0))
         menu.grid_rowconfigure(98, weight=1)
+
+    def request_admin_login(self) -> None:
+        password = simpledialog.askstring(
+            "管理者パスワード",
+            "管理者パスワードを入力してください。",
+            show="*",
+            parent=self,
+        )
+        if password is None:
+            return
+        if password != self.admin_password:
+            messagebox.showerror("認証エラー", "パスワードが違います", parent=self)
+            return
+        self.admin_mode = True
+        self._build_menu()
+        self.show_admin_home_screen()
+
+    def exit_admin_mode(self) -> None:
+        self.admin_mode = False
+        self._build_menu()
+        self.show_search_screen()
+
+    def _require_admin(self) -> bool:
+        if self.admin_mode:
+            return True
+        messagebox.showwarning("管理者ロック", "管理者メニューからログインしてください。", parent=self)
+        return False
+
+    def show_admin_home_screen(self) -> None:
+        if not self._require_admin():
+            return
+        self._set_active_menu("")
+        self._clear_content()
+        self._screen_header("管理者メニュー", "管理者モードです。危険操作・管理操作を実行できます。")
+        body = self._body_frame()
+        body.grid_columnconfigure(0, weight=1)
+        body.grid_columnconfigure(1, weight=1)
+        actions = [
+            ("品目登録", self.show_item_create_screen),
+            ("品目編集", self.show_item_edit_screen),
+            ("品目削除", self.show_item_delete_screen),
+            ("棚卸修正", self.show_stock_adjust_screen),
+            ("CSV品目マスタ取込", self.show_csv_import_screen),
+            ("CSV取込プレビュー", self.show_csv_import_screen),
+            ("QRコード生成", self.show_qr_generation_screen),
+            ("QRコード印刷HTML", self.show_label_html_screen),
+            ("DBバックアップ", self.show_db_backup_screen),
+            ("DB復旧", self.show_db_restore_screen),
+        ]
+        for index, (label, command) in enumerate(actions):
+            self._secondary_button(body, label, command).grid(
+                row=index // 2, column=index % 2, sticky="ew", padx=8, pady=8
+            )
 
     def _set_active_menu(self, key: str) -> None:
         self.current_screen = key
@@ -408,8 +511,8 @@ class InventoryApp(ctk.CTk):
         refresh()
 
     def show_item_create_screen(self) -> None:
-        self._set_active_menu("create")
-        self._clear_content()
+        if not self._admin_screen_guard("create"):
+            return
         self._screen_header(
             "品目登録",
             "新しい品目マスタを登録します。QRコード値は品目IDと同じ値で保存されます。",
@@ -476,8 +579,8 @@ class InventoryApp(ctk.CTk):
         entries["item_id"].focus_set()
 
     def show_item_edit_screen(self) -> None:
-        self._set_active_menu("edit")
-        self._clear_content()
+        if not self._admin_screen_guard("edit"):
+            return
         self._screen_header("品目編集", "品目IDで検索し、品名・型式・保管場所などのマスタ情報を更新します。")
         body = self._body_frame()
         body.grid_rowconfigure(2, weight=1)
@@ -559,8 +662,8 @@ class InventoryApp(ctk.CTk):
         search_entry.focus_set()
 
     def show_stock_adjust_screen(self) -> None:
-        self._set_active_menu("adjust")
-        self._clear_content()
+        if not self._admin_screen_guard("adjust"):
+            return
         self._screen_header("棚卸修正", "実在庫数を入力し、確認後にADJUST履歴として在庫差異を記録します。")
         body = self._body_frame()
         body.grid_rowconfigure(2, weight=1)
@@ -756,6 +859,350 @@ class InventoryApp(ctk.CTk):
         for entry in entries.values():
             entry.bind("<Return>", lambda _event: execute())
         entries["item_id"].focus_set()
+
+    def _format_item_details(self, item: object) -> str:
+        fields = [
+            ("品目ID", "item_id"),
+            ("品名", "item_name"),
+            ("型式", "model_number"),
+            ("メーカー", "maker"),
+            ("保管場所", "location"),
+            ("現在庫", "current_stock"),
+            ("最低在庫", "min_stock"),
+            ("単位", "unit"),
+            ("備考", "note"),
+        ]
+        return "\n".join(f"{label}: {_value(item, key, '-')}" for label, key in fields)
+
+    def _admin_screen_guard(self, menu_key: str) -> bool:
+        if not self._require_admin():
+            return False
+        self._set_active_menu(menu_key)
+        self._clear_content()
+        return True
+
+    def show_item_delete_screen(self) -> None:
+        if not self._admin_screen_guard("delete"):
+            return
+        self._screen_header("品目削除", "入出庫履歴がない品目だけ削除できます。削除前に二重確認します。")
+        body = self._body_frame()
+        body.grid_rowconfigure(2, weight=1)
+        form = ctk.CTkFrame(body, fg_color="transparent")
+        form.grid(row=0, column=0, sticky="ew")
+        form.grid_columnconfigure(1, weight=1)
+        self._label(form, "品目ID").grid(row=0, column=0, padx=(0, 14), sticky="w")
+        item_entry = self._entry(form, "例: ITEM-0003")
+        item_entry.grid(row=0, column=1, sticky="ew")
+        message = self._message_label(body)
+        message.grid(row=1, column=0, sticky="ew", pady=(16, 0))
+        detail = ctk.CTkTextbox(body, height=260, corner_radius=18, border_width=1, border_color=COLOR_BORDER)
+        detail.grid(row=2, column=0, sticky="nsew", pady=(20, 0))
+        detail.configure(state="disabled")
+        loaded_item: object | None = None
+
+        def set_detail(text: str) -> None:
+            detail.configure(state="normal")
+            detail.delete("1.0", tk.END)
+            detail.insert("1.0", text)
+            detail.configure(state="disabled")
+
+        def search() -> None:
+            nonlocal loaded_item
+            item_id = item_entry.get().strip()
+            if not item_id:
+                loaded_item = None
+                set_detail("")
+                self._set_message(message, "品目IDを入力してください。", True)
+                return
+            loaded_item = find_item_by_id(item_id)
+            if loaded_item is None:
+                set_detail("")
+                self._set_message(message, "該当する品目が見つかりません。", True)
+                return
+            set_detail(self._format_item_details(loaded_item))
+            self._set_message(message, "削除対象品目を表示しました。内容を確認してください。")
+
+        def execute_delete() -> None:
+            nonlocal loaded_item
+            entered = item_entry.get().strip()
+            if loaded_item is None or entered != str(_value(loaded_item, "item_id", "")):
+                search()
+                if loaded_item is None:
+                    return
+            item_id = str(_value(loaded_item, "item_id", ""))
+            if not messagebox.askyesno("品目削除の確認", f"以下の品目を削除しますか？\n\n{self._format_item_details(loaded_item)}", parent=self):
+                self._set_message(message, "品目削除を中止しました。", True)
+                return
+            confirmation = simpledialog.askstring("最終確認", f"誤削除防止のため、品目ID {item_id} を再入力してください。", parent=self)
+            if confirmation != item_id:
+                self._set_message(message, "確認入力が一致しないため、削除を中止しました。", True)
+                return
+            try:
+                delete_item(item_id)
+            except ValueError as exc:
+                self._set_message(message, str(exc), True)
+                return
+            loaded_item = None
+            set_detail("")
+            item_entry.delete(0, tk.END)
+            self._set_message(message, f"品目ID '{item_id}' を削除しました。")
+
+        self._primary_button(form, "検索", search).grid(row=0, column=2, padx=(14, 0))
+        self._secondary_button(form, "削除実行", execute_delete).grid(row=0, column=3, padx=(12, 0))
+        item_entry.bind("<Return>", lambda _event: search())
+        item_entry.focus_set()
+
+    def show_csv_import_screen(self) -> None:
+        if not self._admin_screen_guard("csv"):
+            return
+        self._screen_header("CSV品目マスタ取込", "CSVをプレビューし、エラーがない場合のみ自動バックアップ後に取り込みます。")
+        body = self._body_frame()
+        body.grid_rowconfigure(2, weight=1)
+        form = ctk.CTkFrame(body, fg_color="transparent")
+        form.grid(row=0, column=0, sticky="ew")
+        form.grid_columnconfigure(1, weight=1)
+        self._label(form, "CSVファイル").grid(row=0, column=0, padx=(0, 14), sticky="w")
+        path_entry = self._entry(form, "imports/items_sample.csv")
+        path_entry.grid(row=0, column=1, sticky="ew")
+        result_box = ctk.CTkTextbox(body, height=320, corner_radius=18, border_width=1, border_color=COLOR_BORDER)
+        result_box.grid(row=2, column=0, sticky="nsew", pady=(20, 0))
+        result_box.configure(state="disabled")
+        message = self._message_label(body)
+        message.grid(row=1, column=0, sticky="ew", pady=(16, 0))
+        last_preview: dict[str, object] | None = None
+
+        button_frame = ctk.CTkFrame(form, fg_color="transparent")
+        button_frame.grid(row=0, column=2, padx=(14, 0))
+
+        def set_result(text: str) -> None:
+            result_box.configure(state="normal")
+            result_box.delete("1.0", tk.END)
+            result_box.insert("1.0", text)
+            result_box.configure(state="disabled")
+
+        def choose_file() -> None:
+            selected = filedialog.askopenfilename(parent=self, title="CSVファイルを選択", filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+            if selected:
+                self._fill_entry(path_entry, selected)
+
+        def preview() -> None:
+            nonlocal last_preview
+            import_button.configure(state="disabled")
+            try:
+                last_preview = preview_import_items_from_csv(path_entry.get().strip())
+            except ValueError as exc:
+                last_preview = None
+                set_result(str(exc))
+                self._set_message(message, "CSVプレビューでエラーが発生しました。", True)
+                return
+            errors = last_preview["errors"]
+            lines = [
+                f"使用文字コード: {last_preview['encoding']}",
+                f"登録予定件数: {last_preview['registered_count']}",
+                f"更新予定件数: {last_preview['updated_count']}",
+                f"エラー件数: {last_preview['error_count']}",
+                "",
+                "エラー詳細:",
+            ]
+            lines.extend(errors if errors else ["なし"])
+            set_result("\n".join(str(line) for line in lines))
+            if int(last_preview["error_count"]) == 0:
+                import_button.configure(state="normal")
+                self._set_message(message, "エラーはありません。取込実行できます。")
+            else:
+                self._set_message(message, "エラーがあるため取込実行できません。", True)
+
+        def execute_import() -> None:
+            if last_preview is None or int(last_preview["error_count"]) != 0:
+                self._set_message(message, "先にエラーなしのプレビューを実行してください。", True)
+                return
+            if not messagebox.askyesno("CSV取込の確認", "CSV品目マスタを取り込みます。実行直前に自動バックアップを作成しますか？", parent=self):
+                self._set_message(message, "CSV取込を中止しました。", True)
+                return
+            try:
+                backup_path = create_auto_backup("csv_import")
+                result = import_items_from_csv(path_entry.get().strip())
+            except ValueError as exc:
+                self._set_message(message, str(exc), True)
+                return
+            set_result(
+                "取込結果\n"
+                f"使用文字コード: {result['encoding']}\n"
+                f"登録件数: {result['registered_count']}\n"
+                f"更新件数: {result['updated_count']}\n"
+                f"エラー件数: {result['error_count']}\n"
+                f"自動バックアップ: {backup_path if backup_path is not None else 'DB未作成のためなし'}"
+            )
+            import_button.configure(state="disabled")
+            self._set_message(message, "CSV取込が完了しました。")
+
+        self._secondary_button(button_frame, "参照", choose_file).grid(row=0, column=0, padx=(0, 8))
+        self._secondary_button(button_frame, "プレビュー", preview).grid(row=0, column=1, padx=(0, 8))
+        import_button = self._primary_button(button_frame, "取込実行", execute_import)
+        import_button.grid(row=0, column=2)
+        import_button.configure(state="disabled")
+
+    def show_qr_generation_screen(self) -> None:
+        if not self._admin_screen_guard("qr"):
+            return
+        self._screen_header("QRコード生成", "単品または全件のQRコードPNGを qr_codes フォルダへ保存します。")
+        body = self._body_frame()
+        body.grid_rowconfigure(2, weight=1)
+        form = self._form_frame(body)
+        form.grid(row=0, column=0, sticky="ew")
+        self._label(form, "単品 品目ID").grid(row=0, column=0, sticky="w", padx=(24, 18), pady=12)
+        item_entry = self._entry(form, "例: ITEM-0001")
+        item_entry.grid(row=0, column=1, sticky="ew", padx=(0, 24), pady=12)
+        message = self._message_label(body)
+        message.grid(row=1, column=0, sticky="ew", pady=(16, 0))
+        output_label = ctk.CTkLabel(body, text="保存先: -\n生成件数: -", font=FONT_BODY_BOLD, text_color=COLOR_TEXT, anchor="nw", justify="left")
+        output_label.grid(row=2, column=0, sticky="new", pady=(20, 0))
+
+        def generate_single() -> None:
+            item_id = item_entry.get().strip()
+            if not item_id:
+                self._set_message(message, "品目IDを入力してください。", True)
+                return
+            item = get_item_for_qr(item_id)
+            if item is None:
+                self._set_message(message, "該当する品目が見つかりません。", True)
+                return
+            try:
+                path = generate_item_qr_code(item)
+            except ValueError as exc:
+                self._set_message(message, str(exc), True)
+                return
+            output_label.configure(text=f"保存先: {path}\n生成件数: 1")
+            self._set_message(message, "QRコードを生成しました。")
+
+        def generate_all() -> None:
+            try:
+                result = generate_all_qr_codes(list_items())
+            except ValueError as exc:
+                self._set_message(message, str(exc), True)
+                return
+            output_label.configure(text=f"保存先: {QR_CODE_DIR}/\n生成件数: {result['count']}")
+            self._set_message(message, "全件のQRコードを生成しました。")
+
+        button_frame = ctk.CTkFrame(form, fg_color="transparent")
+        button_frame.grid(row=1, column=1, sticky="e", padx=(0, 24), pady=(10, 24))
+        self._primary_button(button_frame, "単品生成", generate_single).grid(row=0, column=0, padx=(0, 12))
+        self._secondary_button(button_frame, "全件生成", generate_all).grid(row=0, column=1)
+
+    def show_label_html_screen(self) -> None:
+        if not self._admin_screen_guard("labels"):
+            return
+        self._screen_header("QRコード印刷用HTML生成", "labels/qr_labels_YYYYMMDD_HHMMSS.html を作成します。")
+        body = self._body_frame()
+        saved_path: Path | None = None
+        message = self._message_label(body)
+        message.grid(row=1, column=0, sticky="ew", pady=(16, 0))
+        output = ctk.CTkLabel(body, text="保存先: -", font=FONT_BODY_BOLD, text_color=COLOR_TEXT, anchor="w")
+        output.grid(row=2, column=0, sticky="ew", pady=(20, 0))
+
+        def generate() -> None:
+            nonlocal saved_path
+            items = list_items()
+            if not items:
+                self._set_message(message, "品目が登録されていません。", True)
+                return
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            try:
+                saved_path = generate_qr_label_sheet(items, LABEL_DIR / f"qr_labels_{timestamp}.html")
+            except ValueError as exc:
+                self._set_message(message, str(exc), True)
+                return
+            output.configure(text=f"保存先: {saved_path}")
+            open_button.configure(state="normal")
+            self._set_message(message, "QRコード印刷用HTMLを生成しました。")
+
+        def open_html() -> None:
+            if saved_path is not None:
+                webbrowser.open(saved_path.resolve().as_uri())
+
+        buttons = ctk.CTkFrame(body, fg_color="transparent")
+        buttons.grid(row=0, column=0, sticky="w")
+        self._primary_button(buttons, "HTML生成", generate).grid(row=0, column=0, padx=(0, 12))
+        open_button = self._secondary_button(buttons, "HTMLを開く", open_html)
+        open_button.grid(row=0, column=1)
+        open_button.configure(state="disabled")
+
+    def show_db_backup_screen(self) -> None:
+        if not self._admin_screen_guard("backup"):
+            return
+        self._screen_header("DBバックアップ", "現在のDBを backups フォルダへコピーします。")
+        body = self._body_frame()
+        message = self._message_label(body)
+        message.grid(row=1, column=0, sticky="ew", pady=(16, 0))
+        output = ctk.CTkLabel(body, text="バックアップファイル: -", font=FONT_BODY_BOLD, text_color=COLOR_TEXT, anchor="w")
+        output.grid(row=2, column=0, sticky="ew", pady=(20, 0))
+
+        def create_backup() -> None:
+            try:
+                path = backup_database()
+            except FileNotFoundError as exc:
+                self._set_message(message, str(exc), True)
+                return
+            output.configure(text=f"バックアップファイル: {path}")
+            self._set_message(message, "DBバックアップを作成しました。")
+
+        self._primary_button(body, "バックアップ作成", create_backup).grid(row=0, column=0, sticky="w")
+
+    def show_db_restore_screen(self) -> None:
+        if not self._admin_screen_guard("restore"):
+            return
+        self._screen_header("DB復旧", "backups フォルダのバックアップを選択し、RESTORE 確認後にDBを復旧します。")
+        body = self._body_frame()
+        body.grid_rowconfigure(1, weight=1)
+        backups = list_backup_files()
+        message = self._message_label(body)
+        message.grid(row=2, column=0, sticky="ew", pady=(16, 0))
+        table_holder = ctk.CTkFrame(body, fg_color="transparent")
+        table_holder.grid(row=1, column=0, sticky="nsew", pady=(20, 0))
+        table_holder.grid_columnconfigure(0, weight=1)
+        table_holder.grid_rowconfigure(0, weight=1)
+        selector = ctk.CTkFrame(body, fg_color="transparent")
+        selector.grid(row=0, column=0, sticky="ew")
+        self._label(selector, "復旧元番号").grid(row=0, column=0, padx=(0, 14), sticky="w")
+        index_entry = self._entry(selector, "例: 1")
+        index_entry.grid(row=0, column=1, sticky="ew")
+        selector.grid_columnconfigure(1, weight=1)
+
+        display_rows = [
+            {"number": i, "filename": b["filename"], "updated_at": b["updated_at"].strftime("%Y-%m-%d %H:%M:%S"), "size": b["size"]}
+            for i, b in enumerate(backups, start=1)
+        ]
+        self._render_table(table_holder, display_rows, [("番号", "number", 70), ("ファイル名", "filename", 260), ("更新日時", "updated_at", 160), ("サイズ", "size", 100)], "復旧可能な .db バックアップがありません。")
+
+        def restore() -> None:
+            if not backups:
+                self._set_message(message, "復旧可能なバックアップがありません。", True)
+                return
+            try:
+                index = int(index_entry.get().strip())
+            except ValueError:
+                self._set_message(message, "バックアップ番号は半角数字で入力してください。", True)
+                return
+            if index < 1 or index > len(backups):
+                self._set_message(message, "選択された番号が一覧の範囲外です。", True)
+                return
+            selected = backups[index - 1]
+            if not messagebox.askyesno("DB復旧の強い確認", f"現在のDBを上書きします。\n復旧元: {selected['filename']}\n続行しますか？", parent=self):
+                self._set_message(message, "DB復旧を中止しました。", True)
+                return
+            confirmation = simpledialog.askstring("最終確認", "復旧するには RESTORE と入力してください。", parent=self)
+            if confirmation != "RESTORE":
+                self._set_message(message, "確認入力が一致しないため、DB復旧を中止しました。", True)
+                return
+            try:
+                result = restore_database_from_backup(selected["path"])
+            except (FileNotFoundError, ValueError) as exc:
+                self._set_message(message, str(exc), True)
+                return
+            self._set_message(message, f"DBを復旧しました。復旧元: {result['source_path']} / 復旧前退避: {result['before_restore_path']}")
+
+        self._primary_button(selector, "DB復旧実行", restore).grid(row=0, column=2, padx=(14, 0))
+        self._secondary_button(selector, "品目一覧を再読み込み", self.show_list_screen).grid(row=0, column=3, padx=(12, 0))
 
     def show_low_stock_screen(self) -> None:
         self._set_active_menu("alert")
