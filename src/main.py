@@ -8,6 +8,7 @@ from database import (
     decrease_stock,
     delete_item,
     find_item_by_id,
+    get_item_for_qr,
     get_transactions_by_item_id,
     increase_stock,
     import_items_from_csv,
@@ -19,6 +20,7 @@ from database import (
     restore_database_from_backup,
     update_item,
 )
+from qr_utils import QR_CODE_DIR, generate_all_qr_codes, generate_item_qr_code
 
 
 def prompt_item_id() -> str:
@@ -331,6 +333,46 @@ def import_item_master_csv() -> None:
             print(message)
 
 
+def generate_single_qr_code_menu() -> None:
+    print("--- QRコード生成（単品） ---")
+    item_id = input("品目IDを入力してください: ").strip()
+    if not item_id:
+        print("品目IDが空です。")
+        return
+
+    item = get_item_for_qr(item_id)
+    if item is None:
+        print(f"品目ID '{item_id}' は見つかりませんでした。")
+        return
+
+    try:
+        output_path = generate_item_qr_code(item)
+    except ValueError as error:
+        print(f"エラー: {error}")
+        return
+
+    print("QRコードを生成しました:")
+    print(output_path)
+
+
+def generate_all_qr_codes_menu() -> None:
+    print("--- QRコード生成（全件） ---")
+    items = list_items()
+    if not items:
+        print("品目が登録されていません。")
+        return
+
+    try:
+        result = generate_all_qr_codes(items)
+    except ValueError as error:
+        print(f"エラー: {error}")
+        return
+
+    print("全品目のQRコードを生成しました。")
+    print(f"生成件数: {result['count']}")
+    print(f"保存先フォルダ: {QR_CODE_DIR}/")
+
+
 def create_database_backup() -> None:
     print("--- DBバックアップ ---")
     try:
@@ -402,8 +444,10 @@ def main() -> None:
         print("9. 最低在庫アラート")
         print("10. CSV品目マスタ取込")
         print("11. 棚卸修正")
-        print("12. DBバックアップ")
-        print("13. DB復旧")
+        print("12. QRコード生成（単品）")
+        print("13. QRコード生成（全件）")
+        print("14. DBバックアップ")
+        print("15. DB復旧")
         print("q. 終了")
         choice = input("メニューを選択してください: ").strip().lower()
 
@@ -433,11 +477,15 @@ def main() -> None:
         elif choice == "11":
             stock_adjustment()
         elif choice == "12":
-            create_database_backup()
+            generate_single_qr_code_menu()
         elif choice == "13":
+            generate_all_qr_codes_menu()
+        elif choice == "14":
+            create_database_backup()
+        elif choice == "15":
             restore_database_menu()
         else:
-            print("無効な選択です。1-13 または q を入力してください。")
+            print("無効な選択です。1-15 または q を入力してください。")
 
 
 if __name__ == "__main__":
