@@ -12,6 +12,7 @@ from database import (
     increase_stock,
     import_items_from_csv,
     initialize_database,
+    preview_import_items_from_csv,
     list_backup_files,
     list_items,
     list_low_stock_items,
@@ -281,6 +282,31 @@ def import_item_master_csv() -> None:
         print("CSVファイルパスが空です。")
         return
 
+    try:
+        preview = preview_import_items_from_csv(csv_path)
+    except ValueError as error:
+        print(f"エラー: {error}")
+        return
+
+    print("CSV取込プレビュー:")
+    print(f"使用文字コード: {preview['encoding']}")
+    print(f"登録予定件数: {preview['registered_count']}")
+    print(f"更新予定件数: {preview['updated_count']}")
+    print(f"エラー件数: {preview['error_count']}")
+
+    errors = preview["errors"]
+    if errors:
+        print()
+        print("CSVにエラーがあります。取込は実行できません。")
+        for message in errors:
+            print(message)
+        return
+
+    confirmation = input("取込を実行するには IMPORT と入力してください: ").strip()
+    if confirmation != "IMPORT":
+        print("CSV取込をキャンセルしました。")
+        return
+
     backup_path = create_auto_backup("csv_import")
     if backup_path is not None:
         print("自動バックアップを作成しました:")
@@ -298,10 +324,10 @@ def import_item_master_csv() -> None:
     print(f"更新件数: {result['updated_count']}")
     print(f"エラー件数: {result['error_count']}")
 
-    errors = result["errors"]
-    if errors:
+    result_errors = result["errors"]
+    if result_errors:
         print("--- エラー詳細 ---")
-        for message in errors:
+        for message in result_errors:
             print(message)
 
 

@@ -317,11 +317,23 @@ CSV_ENCODING_ERROR_MESSAGE = (
 )
 
 
+REQUIRED_ITEM_CSV_COLUMNS = {
+    "item_id",
+    "item_name",
+    "model_number",
+    "maker",
+    "location",
+    "unit",
+    "min_stock",
+    "current_stock",
+    "qr_code",
+    "note",
+}
+
+
 def import_items_from_csv(csv_path: str, db_path: Path = DB_PATH) -> dict[str, object]:
     """Import item master from CSV with upsert behavior."""
-    path = Path(csv_path)
-    if not path.exists():
-        raise ValueError(f"CSVファイルが見つかりません: {csv_path}")
+    path = _validate_csv_path(csv_path)
 
     last_decode_error: UnicodeDecodeError | None = None
     for encoding in CSV_ENCODINGS:
@@ -333,6 +345,183 @@ def import_items_from_csv(csv_path: str, db_path: Path = DB_PATH) -> dict[str, o
     raise ValueError(CSV_ENCODING_ERROR_MESSAGE) from last_decode_error
 
 
+def preview_import_items_from_csv(
+    csv_path: str,
+    db_path: Path = DB_PATH,
+) -> dict[str, object]:
+    """Preview item master CSV import without changing the database."""
+    path = _validate_csv_path(csv_path)
+
+    last_decode_error: UnicodeDecodeError | None = None
+    for encoding in CSV_ENCODINGS:
+        try:
+            return _preview_import_items_from_csv_with_encoding(path, encoding, db_path)
+        except UnicodeDecodeError as error:
+            last_decode_error = error
+
+    raise ValueError(CSV_ENCODING_ERROR_MESSAGE) from last_decode_error
+
+
+def _validate_csv_path(csv_path: str) -> Path:
+    path = Path(csv_path)
+    if not path.exists():
+        raise ValueError(f"CSVファイルが見つかりません: {csv_path}")
+    if not path.is_file():
+        raise ValueError(f"CSVファイルではありません: {csv_path}")
+    return path
+
+
+def _validate_item_csv_header(fieldnames: list[str] | None) -> None:
+    if fieldnames is None:
+        raise ValueError("CSVヘッダーが見つかりません。")
+
+    missing_columns = REQUIRED_ITEM_CSV_COLUMNS - set(fieldnames)
+    if missing_columns:
+        missing = ", ".join(sorted(missing_columns))
+        raise ValueError(f"CSVヘッダーに不足があります: {missing}")
+
+
+def _parse_item_csv_row(
+    row: dict[str, str],
+    row_index: int,
+) -> tuple[dict[str, object] | None, list[str]]:
+    errors: list[str] = []
+    item_id = (row.get("item_id") or "").strip()
+    item_name = (row.get("item_name") or "").strip()
+
+    if not item_id:
+        errors.append(f"{row_index}行目: item_id が空です")
+    if not item_name:
+        errors.append(f"{row_index}行目: item_name が空です")
+
+    min_stock = 0
+    min_stock_text = (row.get("min_stock") or "0").strip()
+    try:
+        min_stock = int(min_stock_text)
+        if min_stock < 0:
+            errors.append(f"{row_index}行目: min_stock は0以上を指定してください")
+    except ValueError:
+        errors.append(f"{row_index}行目: min_stock が整数ではありません")
+
+    current_stock = 0
+    current_stock_text = (row.get("current_stock") or "0").strip()
+    try:
+        current_stock = int(current_stock_text)
+        if current_stock < 0:
+            errors.append(f"{row_index}行目: current_stock は0以上を指定してください")
+    except ValueError:
+        errors.append(f"{row_index}行目: current_stock が整数ではありません")
+
+    if errors:
+        return None, errors
+
+    item = {
+        "item_id": item_id,
+        "item_name": item_name,
+        "model_number": (row.get("model_number") or "").strip(),
+        "maker": (row.get("maker") or "").strip(),
+        "location": (row.get("location") or "").strip(),
+        "unit": (row.get("unit") or "").strip(),
+        "min_stock": min_stock,
+        "current_stock": current_stock,
+        "qr_code": (row.get("qr_code") or "").strip() or item_id,
+        "note": (row.get("note") or "").strip(),
+    }
+    return item, []
+
+
+def _classify_item_import_action(
+    connection: sqlite3.Connection,
+    item_id: object,
+) -> str:
+    exists = connection.execute(
+        "SELECT 1 FROM items WHERE item_id = ?",
+        (item_id,),
+    ).fetchone()
+    if exists is None:
+        return "insert"
+    return "update"
+
+
+def _validate_item_import_constraints(
+    connection: sqlite3.Connection,
+    item: dict[str, object],
+    row_index: int,
+    seen_item_ids: set[object],
+    seen_qr_codes: dict[object, object],
+) -> list[str]:
+    errors: list[str] = []
+    item_id = item["item_id"]
+    qr_code = item["qr_code"]
+
+    if item_id in seen_item_ids:
+        errors.append(f"{row_index}行目: item_id がCSV内で重複しています")
+
+    existing_qr_item = connection.execute(
+        "SELECT item_id FROM items WHERE qr_code = ? AND item_id <> ?",
+        (qr_code, item_id),
+    ).fetchone()
+    if existing_qr_item is not None:
+        errors.append(
+            f"{row_index}行目: qr_code は既存品目 {existing_qr_item['item_id']} で使用されています"
+        )
+
+    if qr_code in seen_qr_codes and seen_qr_codes[qr_code] != item_id:
+        errors.append(f"{row_index}行目: qr_code がCSV内で重複しています")
+
+    if not errors:
+        seen_item_ids.add(item_id)
+        seen_qr_codes[qr_code] = item_id
+
+    return errors
+
+
+def _preview_import_items_from_csv_with_encoding(
+    path: Path,
+    encoding: str,
+    db_path: Path,
+) -> dict[str, object]:
+    registered_count = 0
+    updated_count = 0
+    errors: list[str] = []
+    seen_item_ids: set[object] = set()
+    seen_qr_codes: dict[object, object] = {}
+
+    with (
+        path.open("r", encoding=encoding, newline="") as csv_file,
+        get_connection(db_path) as connection,
+    ):
+        reader = csv.DictReader(csv_file)
+        _validate_item_csv_header(reader.fieldnames)
+
+        for row_index, row in enumerate(reader, start=2):
+            item, row_errors = _parse_item_csv_row(row, row_index)
+            if row_errors:
+                errors.extend(row_errors)
+                continue
+
+            constraint_errors = _validate_item_import_constraints(
+                connection, item, row_index, seen_item_ids, seen_qr_codes
+            )
+            if constraint_errors:
+                errors.extend(constraint_errors)
+                continue
+
+            action = _classify_item_import_action(connection, item["item_id"])
+            if action == "insert":
+                registered_count += 1
+            else:
+                updated_count += 1
+
+    return {
+        "registered_count": registered_count,
+        "updated_count": updated_count,
+        "error_count": len(errors),
+        "errors": errors,
+        "encoding": encoding,
+    }
+
+
 def _import_items_from_csv_with_encoding(
     path: Path,
     encoding: str,
@@ -341,68 +530,32 @@ def _import_items_from_csv_with_encoding(
     registered_count = 0
     updated_count = 0
     errors: list[str] = []
+    seen_item_ids: set[object] = set()
+    seen_qr_codes: dict[object, object] = {}
 
     with (
         path.open("r", encoding=encoding, newline="") as csv_file,
         get_connection(db_path) as connection,
     ):
         reader = csv.DictReader(csv_file)
-        required_columns = {
-            "item_id",
-            "item_name",
-            "model_number",
-            "maker",
-            "location",
-            "unit",
-            "min_stock",
-            "current_stock",
-            "qr_code",
-            "note",
-        }
-        if reader.fieldnames is None:
-            raise ValueError("CSVヘッダーが見つかりません。")
-
-        missing_columns = required_columns - set(reader.fieldnames)
-        if missing_columns:
-            missing = ", ".join(sorted(missing_columns))
-            raise ValueError(f"CSVヘッダーに不足があります: {missing}")
+        _validate_item_csv_header(reader.fieldnames)
 
         for row_index, row in enumerate(reader, start=2):
-            item_id = (row.get("item_id") or "").strip()
-            item_name = (row.get("item_name") or "").strip()
-
-            if not item_id:
-                errors.append(f"{row_index}行目: item_id が空です")
-                continue
-            if not item_name:
-                errors.append(f"{row_index}行目: item_name が空です")
+            item, row_errors = _parse_item_csv_row(row, row_index)
+            if row_errors:
+                errors.extend(row_errors)
                 continue
 
-            try:
-                min_stock = int((row.get("min_stock") or "0").strip())
-            except ValueError:
-                errors.append(f"{row_index}行目: min_stock が整数ではありません")
+            constraint_errors = _validate_item_import_constraints(
+                connection, item, row_index, seen_item_ids, seen_qr_codes
+            )
+            if constraint_errors:
+                errors.extend(constraint_errors)
                 continue
 
-            try:
-                current_stock = int((row.get("current_stock") or "0").strip())
-            except ValueError:
-                errors.append(f"{row_index}行目: current_stock が整数ではありません")
-                continue
+            action = _classify_item_import_action(connection, item["item_id"])
 
-            model_number = (row.get("model_number") or "").strip()
-            maker = (row.get("maker") or "").strip()
-            location = (row.get("location") or "").strip()
-            unit = (row.get("unit") or "").strip()
-            qr_code = (row.get("qr_code") or "").strip() or item_id
-            note = (row.get("note") or "").strip()
-
-            exists = connection.execute(
-                "SELECT 1 FROM items WHERE item_id = ?",
-                (item_id,),
-            ).fetchone()
-
-            if exists is None:
+            if action == "insert":
                 connection.execute(
                     """
                     INSERT INTO items (
@@ -412,16 +565,16 @@ def _import_items_from_csv_with_encoding(
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        item_id,
-                        item_name,
-                        model_number,
-                        maker,
-                        location,
-                        unit,
-                        min_stock,
-                        current_stock,
-                        qr_code,
-                        note,
+                        item["item_id"],
+                        item["item_name"],
+                        item["model_number"],
+                        item["maker"],
+                        item["location"],
+                        item["unit"],
+                        item["min_stock"],
+                        item["current_stock"],
+                        item["qr_code"],
+                        item["note"],
                     ),
                 )
                 registered_count += 1
@@ -442,16 +595,16 @@ def _import_items_from_csv_with_encoding(
                     WHERE item_id = ?
                     """,
                     (
-                        item_name,
-                        model_number,
-                        maker,
-                        location,
-                        unit,
-                        min_stock,
-                        current_stock,
-                        qr_code,
-                        note,
-                        item_id,
+                        item["item_name"],
+                        item["model_number"],
+                        item["maker"],
+                        item["location"],
+                        item["unit"],
+                        item["min_stock"],
+                        item["current_stock"],
+                        item["qr_code"],
+                        item["note"],
+                        item["item_id"],
                     ),
                 )
                 updated_count += 1

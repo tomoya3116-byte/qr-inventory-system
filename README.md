@@ -230,8 +230,35 @@ item_id,item_name,model_number,maker,location,unit,min_stock,current_stock,qr_co
 1. `python3 src/main.py` を実行
 2. メニュー `10`（CSV品目マスタ取込）を選択
 3. 例: `imports/items_sample.csv` を入力
-4. `自動バックアップを作成しました:` の下に表示された `backups/auto_csv_import_YYYYMMDD_HHMMSS.db` を確認
-5. 取込結果（登録件数/更新件数/エラー件数）を確認
+4. `CSV取込プレビュー` で、使用文字コード・登録予定件数・更新予定件数・エラー件数を確認
+5. エラーがある場合は取込が実行されないため、表示された行番号と内容をもとにCSVを修正
+6. エラーがない場合のみ、確認プロンプトに `IMPORT` と入力して取込を実行
+7. `自動バックアップを作成しました:` の下に表示された `backups/auto_csv_import_YYYYMMDD_HHMMSS.db` を確認
+8. 取込結果（登録件数/更新件数/エラー件数）を確認
+
+#### CSV取込プレビュー
+
+CSV品目マスタ取込では、DBを更新する前にCSV内容を検証し、既存DBの `item_id` と照合して登録予定・更新予定・エラー行を表示します。プレビュー時点ではDBを更新しません。
+
+```text
+CSV取込プレビュー:
+使用文字コード: cp932
+登録予定件数: 3
+更新予定件数: 17
+エラー件数: 0
+
+取込を実行するには IMPORT と入力してください:
+```
+
+エラーがある場合は、以下のようにエラー詳細が表示され、取込は実行できません。
+
+```text
+CSVにエラーがあります。取込は実行できません。
+3行目: item_id が空です
+8行目: current_stock が整数ではありません
+```
+
+取込実行直前には、自動バックアップ `backups/auto_csv_import_YYYYMMDD_HHMMSS.db` が作成されます。
 
 #### ExcelでCSV保存する場合の注意
 
