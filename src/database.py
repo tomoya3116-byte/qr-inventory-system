@@ -215,6 +215,32 @@ def list_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
     return rows
 
 
+
+
+def list_low_stock_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
+    """Return items where current stock is less than or equal to minimum stock."""
+    with get_connection(db_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                item_id,
+                item_name,
+                model_number,
+                maker,
+                location,
+                unit,
+                min_stock,
+                current_stock,
+                CASE
+                    WHEN current_stock < min_stock THEN min_stock - current_stock
+                    ELSE 0
+                END AS shortage_quantity
+            FROM items
+            WHERE current_stock <= min_stock
+            ORDER BY shortage_quantity DESC, item_id ASC
+            """
+        ).fetchall()
+    return rows
 def find_item_by_id(item_id: str, db_path: Path = DB_PATH) -> Optional[sqlite3.Row]:
     """Find a single item by its item_id or qr_code."""
     with get_connection(db_path) as connection:
