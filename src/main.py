@@ -9,6 +9,7 @@ from database import (
     increase_stock,
     initialize_database,
     list_items,
+    list_low_stock_items,
     update_item,
 )
 
@@ -53,6 +54,24 @@ def show_item_list() -> None:
             f"{row['item_id']} | {row['item_name']} | 型番:{row['model_number'] or '-'} "
             f"| メーカー:{row['maker'] or '-'} | 保管:{row['location'] or '-'} "
             f"| 単位:{row['unit'] or '-'} | 最低在庫:{row['min_stock']} | 現在庫:{row['current_stock']}"
+        )
+
+
+
+
+def show_low_stock_alert() -> None:
+    rows = list_low_stock_items()
+    if not rows:
+        print("最低在庫を下回っている品目はありません。")
+        return
+
+    print("--- 最低在庫アラート ---")
+    for row in rows:
+        print(
+            f"{row['item_id']} | {row['item_name']} | 型式:{row['model_number'] or '-'} "
+            f"| メーカー:{row['maker'] or '-'} | 保管場所:{row['location'] or '-'} "
+            f"| 現在庫:{row['current_stock']} | 最低在庫:{row['min_stock']} "
+            f"| 不足数量:{row['shortage_quantity']} | 単位:{row['unit'] or '-'}"
         )
 
 
@@ -205,6 +224,7 @@ def main() -> None:
         print("6. 品目登録")
         print("7. 品目編集")
         print("8. 品目削除")
+        print("9. 最低在庫アラート")
         print("q. 終了")
         choice = input("メニューを選択してください: ").strip().lower()
 
@@ -227,8 +247,10 @@ def main() -> None:
             edit_item()
         elif choice == "8":
             remove_item()
+        elif choice == "9":
+            show_low_stock_alert()
         else:
-            print("無効な選択です。1-8 または q を入力してください。")
+            print("無効な選択です。1-9 または q を入力してください。")
 
 
 if __name__ == "__main__":
