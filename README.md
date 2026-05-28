@@ -74,6 +74,7 @@ python3 src/main.py
 13. QRコード生成（全件）
 14. DBバックアップ
 15. DB復旧
+16. QRコード印刷用HTML生成
 q. 終了
 
 ## 動作確認例
@@ -96,13 +97,15 @@ q. 終了
    - 全品目分のPNGが `qr_codes/` に作成される
 8. **DBバックアップ**: `14`
    - `backups/inventory_YYYYMMDD_HHMMSS.db` が作成される
-9. **在庫不足確認**: `3` → `ITEM-0001` → `1000`
+9. **QRコード印刷用HTML生成**: `16`
+   - `labels/qr_labels_YYYYMMDD_HHMMSS.html` が作成される
+10. **在庫不足確認**: `3` → `ITEM-0001` → `1000`
    - 在庫不足エラーが表示され、在庫はマイナスにならない
 
 ## 補足
 
 - すべてのファイルは UTF-8 で保存されています。
-- DBファイル・バックアップDB・一時CSV・生成済みQRコードPNGはGit管理しません。
+- DBファイル・バックアップDB・一時CSV・生成済みQRコードPNG・生成済みラベルHTMLはGit管理しません。
 - `find_item_by_id` は `item_id` または `qr_code` で検索できます。
 
 
@@ -183,6 +186,33 @@ q. 終了
 4. メニュー `13`（QRコード生成（全件））を実行
 5. 全品目分のPNGが `qr_codes/` に作成されることを確認
 6. `git status --short` に `qr_codes/*.png` が表示されないことを確認
+
+### QRコード印刷用HTML生成
+
+- メニュー `16`（QRコード印刷用HTML生成）を選択すると、登録済み全品目のQRコードをA4縦向きで印刷しやすいHTMLに一覧配置します。
+- 出力先はリポジトリ直下の `labels/` フォルダです。ファイル名は `qr_labels_YYYYMMDD_HHMMSS.html` 形式です。
+- 各ラベルにはQRコード画像、品目ID、品名、型式、保管場所が表示されます。
+- HTMLはブラウザで開いて印刷してください。3列グリッド、枠線付きラベル、印刷用CSSを含んでいます。
+- 対象品目のQRコード画像 `qr_codes/{item_id}.png` が未生成の場合は、HTML生成時に自動生成されます。
+- `labels/*.html` はGit管理しません。生成した印刷用HTMLはローカル環境で保管してください。
+
+#### QRコード印刷用HTML生成の使い方
+
+1. `python3 src/main.py` を実行
+2. メニュー `16`（QRコード印刷用HTML生成）を選択
+3. `QRコード印刷用HTMLを生成しました:` の下に表示された保存先を確認
+4. `labels` フォルダに `qr_labels_YYYYMMDD_HHMMSS.html` が作成されていることを確認
+5. HTMLをブラウザで開き、QRコード・品目ID・品名・型式・保管場所が表示されることを確認
+6. ブラウザの印刷機能でA4縦向き印刷プレビューを確認
+
+#### QRコード印刷用HTML生成の動作確認例
+
+1. `python3 src/main.py` を実行
+2. メニュー `16`（QRコード印刷用HTML生成）を選択
+3. `labels` フォルダに `qr_labels_YYYYMMDD_HHMMSS.html` が作成されることを確認
+4. HTMLをブラウザで開き、QRコード・品目ID・品名・型式・保管場所が表示されることを確認
+5. 事前にQRコード画像が未生成だった品目は、`qr_codes/{item_id}.png` が自動生成されることを確認
+6. `git status --short` に `labels/*.html` が表示されないことを確認
 
 ### DBバックアップ
 
