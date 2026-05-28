@@ -16,13 +16,48 @@ QR code based inventory management system using Python and SQLite.
 pip install -r requirements.txt
 ```
 
-3. リポジトリのルートで以下を実行
+3. リポジトリのルートでCUI版を起動
 
 ```bash
-python3 src/main.py
+python src/main.py
+```
+
+4. GUI版を使う場合は、リポジトリのルートで以下を実行
+
+```bash
+python src/gui_main.py
 ```
 
 初回実行時に `data/inventory.db` が自動作成され、テーブル初期化とサンプルデータ投入が行われます。
+既存のCUI版は引き続き `python src/main.py` で利用できます。
+
+
+## GUI版の使い方
+
+CustomTkinterを使ったGUI版は、現場作業者が日常操作を直感的に行えるようにした画面です。
+左側のメニューから機能を選び、右側の画面で作業します。
+
+```bash
+python src/gui_main.py
+```
+
+GUI版 Phase 1 で利用できる機能は以下です。
+
+- 品目検索: 品目IDまたはQRコードで品目情報を確認
+- 品目一覧: 全品目の一覧表示と更新
+- 入庫: 品目ID・数量・作業者・備考を入力して在庫を追加
+- 出庫: 在庫不足を確認しながら在庫を減算
+- 最低在庫アラート: `current_stock <= min_stock` の品目を一覧表示
+
+### GUI版の動作確認例
+
+1. `pip install -r requirements.txt` を実行
+2. `python src/gui_main.py` を実行
+3. 品目検索で `ITEM-0001` を検索
+4. 品目一覧を表示
+5. `ITEM-0001` を数量 `1` で入庫
+6. `ITEM-0001` を数量 `1` で出庫
+7. 最低在庫アラートを表示
 
 ## スキーマ（主要カラム）
 

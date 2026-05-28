@@ -20,7 +20,7 @@ This project uses or plans to use the following third-party software and runtime
 ## CustomTkinter
 
 - License: MIT License
-- Notice: GUI化時に使用予定です。現時点では `requirements.txt` には含めていません。
+- Notice: Used to provide the GUI application in `src/gui_main.py`.
 
 ## SQLite
 
