@@ -3,12 +3,27 @@
 from __future__ import annotations
 
 import csv
+import shutil
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 DB_PATH = Path("data/inventory.db")
+BACKUP_DIR = Path("backups")
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
+
+
+def backup_database(db_path: Path = DB_PATH, backup_dir: Path = BACKUP_DIR) -> Path:
+    """Copy the SQLite database file to the backups directory."""
+    if not db_path.exists():
+        raise FileNotFoundError(f"バックアップ対象のDBファイルが見つかりません: {db_path}")
+
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = backup_dir / f"inventory_{timestamp}.db"
+    shutil.copy2(db_path, backup_path)
+    return backup_path
 
 
 def get_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:

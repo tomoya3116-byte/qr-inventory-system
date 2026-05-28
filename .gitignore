@@ -1,2 +1,5 @@
 # SQLite database files
 /data/*.db
+backups/*.db
+backups/*.sqlite
+backups/*.sqlite3
