@@ -2,6 +2,7 @@
 
 from database import (
     adjust_stock,
+    backup_database,
     create_item,
     decrease_stock,
     delete_item,
@@ -288,6 +289,18 @@ def import_item_master_csv() -> None:
             print(message)
 
 
+def create_database_backup() -> None:
+    print("--- DBバックアップ ---")
+    try:
+        backup_path = backup_database()
+    except FileNotFoundError as error:
+        print(f"エラー: {error}")
+        return
+
+    print("バックアップを作成しました:")
+    print(backup_path)
+
+
 def main() -> None:
     initialize_database()
     print("=== Inventory CUI Menu ===")
@@ -304,6 +317,7 @@ def main() -> None:
         print("9. 最低在庫アラート")
         print("10. CSV品目マスタ取込")
         print("11. 棚卸修正")
+        print("12. DBバックアップ")
         print("q. 終了")
         choice = input("メニューを選択してください: ").strip().lower()
 
@@ -332,8 +346,10 @@ def main() -> None:
             import_item_master_csv()
         elif choice == "11":
             stock_adjustment()
+        elif choice == "12":
+            create_database_backup()
         else:
-            print("無効な選択です。1-11 または q を入力してください。")
+            print("無効な選択です。1-12 または q を入力してください。")
 
 
 if __name__ == "__main__":
