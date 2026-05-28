@@ -1,5 +1,16 @@
-# SQLite database files
-/data/*.db
+# Python cache files
+__pycache__/
+src/__pycache__/
+*.pyc
+
+# Local SQLite database files
+data/*.db
+
+# Local database backups
 backups/*.db
 backups/*.sqlite
 backups/*.sqlite3
+
+# Local generated inventory exports
+database.csv
+database.txt
