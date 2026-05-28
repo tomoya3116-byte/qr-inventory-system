@@ -136,8 +136,9 @@ item_id,item_name,model_number,maker,location,unit,min_stock,current_stock,qr_co
 
 #### ExcelでCSV保存する場合の注意
 
-- Excelから保存する際は、文字化け防止のため **UTF-8 (BOM付き / UTF-8-sig)** を選択してください。
-- 本システムは UTF-8-sig のCSV読込を想定しています。
+- Excelで作成したCSVは、環境や保存方法によって Shift-JIS/CP932 になる場合があります。
+- 本アプリは `utf-8-sig`, `utf-8`, `cp932`, `shift_jis` のCSV読込に対応しています。
+- 文字化けする場合は、Excelの保存形式で **CSV UTF-8** を選択して保存してください。
 
 #### CSV取込後の確認方法
 

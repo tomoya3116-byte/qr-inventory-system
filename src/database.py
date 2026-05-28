@@ -216,17 +216,41 @@ def list_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
     return rows
 
 
+CSV_ENCODINGS = ("utf-8-sig", "utf-8", "cp932", "shift_jis")
+CSV_ENCODING_ERROR_MESSAGE = (
+    "CSVの文字コードを読み取れませんでした。UTF-8またはShift-JISで保存してください。"
+)
+
+
 def import_items_from_csv(csv_path: str, db_path: Path = DB_PATH) -> dict[str, object]:
     """Import item master from CSV with upsert behavior."""
-    registered_count = 0
-    updated_count = 0
-    errors: list[str] = []
-
     path = Path(csv_path)
     if not path.exists():
         raise ValueError(f"CSVファイルが見つかりません: {csv_path}")
 
-    with path.open("r", encoding="utf-8-sig", newline="") as csv_file, get_connection(db_path) as connection:
+    last_decode_error: UnicodeDecodeError | None = None
+    for encoding in CSV_ENCODINGS:
+        try:
+            return _import_items_from_csv_with_encoding(path, encoding, db_path)
+        except UnicodeDecodeError as error:
+            last_decode_error = error
+
+    raise ValueError(CSV_ENCODING_ERROR_MESSAGE) from last_decode_error
+
+
+def _import_items_from_csv_with_encoding(
+    path: Path,
+    encoding: str,
+    db_path: Path,
+) -> dict[str, object]:
+    registered_count = 0
+    updated_count = 0
+    errors: list[str] = []
+
+    with (
+        path.open("r", encoding=encoding, newline="") as csv_file,
+        get_connection(db_path) as connection,
+    ):
         reader = csv.DictReader(csv_file)
         required_columns = {
             "item_id",
@@ -344,6 +368,7 @@ def import_items_from_csv(csv_path: str, db_path: Path = DB_PATH) -> dict[str, o
         "updated_count": updated_count,
         "error_count": len(errors),
         "errors": errors,
+        "encoding": encoding,
     }
 
 
