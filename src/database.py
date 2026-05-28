@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import re
 import shutil
 import sqlite3
 from datetime import datetime
@@ -15,7 +16,7 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
 def backup_database(db_path: Path = DB_PATH, backup_dir: Path = BACKUP_DIR) -> Path:
-    """Copy the SQLite database file to the backups directory."""
+    """Create a manual backup of the SQLite database file."""
     if not db_path.exists():
         raise FileNotFoundError(
             f"バックアップ対象のDBファイルが見つかりません: {db_path}"
@@ -24,6 +25,26 @@ def backup_database(db_path: Path = DB_PATH, backup_dir: Path = BACKUP_DIR) -> P
     backup_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = backup_dir / f"inventory_{timestamp}.db"
+    shutil.copy2(db_path, backup_path)
+    return backup_path
+
+
+def create_auto_backup(
+    reason: str,
+    db_path: Path = DB_PATH,
+    backup_dir: Path = BACKUP_DIR,
+) -> Path | None:
+    """Create an automatic backup before a high-impact operation."""
+    if not db_path.exists():
+        return None
+
+    safe_reason = re.sub(r"[^A-Za-z0-9_-]+", "_", reason.strip()).strip("_")
+    if not safe_reason:
+        safe_reason = "operation"
+
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = backup_dir / f"auto_{safe_reason}_{timestamp}.db"
     shutil.copy2(db_path, backup_path)
     return backup_path
 
@@ -71,11 +92,12 @@ def restore_database_from_backup(
     if not db_path.exists():
         raise FileNotFoundError(f"復旧対象のDBファイルが見つかりません: {db_path}")
 
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    before_restore_path = backup_dir / f"before_restore_{timestamp}.db"
+    before_restore_path = create_auto_backup(
+        "before_restore", db_path=db_path, backup_dir=backup_dir
+    )
+    if before_restore_path is None:
+        raise FileNotFoundError(f"復旧対象のDBファイルが見つかりません: {db_path}")
 
-    shutil.copy2(db_path, before_restore_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_path, db_path)
 
