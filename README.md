@@ -128,6 +128,7 @@ q. 終了
 - 棚卸修正は `transactions.transaction_type = ADJUST` として履歴に保存されます。
 - `transactions.quantity` には差異数量が保存されます。例: 現在庫 `13` を実在庫 `11` に修正した場合、`quantity = -2` です。
 - `transactions.stock_after` には修正後在庫（実在庫数）が保存され、作業者と備考も履歴に残ります。
+- 棚卸修正の確定直前に、自動バックアップ `backups/auto_stock_adjust_YYYYMMDD_HHMMSS.db` が作成されます。
 
 #### 棚卸修正の動作確認例
 
@@ -135,14 +136,15 @@ q. 終了
 2. メニュー `11`（棚卸修正）を選択
 3. 品目IDに `ITEM-0001`、実在庫数に `11`、必要に応じて作業者・備考を入力
 4. 確認画面で差異を確認し、`y` を入力
-5. メニュー `4`（入出庫履歴表示）で `ITEM-0001` を指定し、`ADJUST` 履歴が表示されることを確認
+5. `自動バックアップを作成しました:` の下に表示された `backups/auto_stock_adjust_YYYYMMDD_HHMMSS.db` を確認
+6. メニュー `4`（入出庫履歴表示）で `ITEM-0001` を指定し、`ADJUST` 履歴が表示されることを確認
 
 ### DBバックアップ
 
 - メニュー `12` を選択すると、`data/inventory.db` を任意のタイミングでバックアップできます。
 - バックアップファイルは `backups/inventory_YYYYMMDD_HHMMSS.db` という名前で作成されます。
-- CSV品目マスタ取込前にバックアップすることを推奨します。
-- 棚卸修正前にバックアップすることを推奨します。
+- DBバックアップは、ユーザーがメニューから任意に作成する手動バックアップです。
+- 危険な操作の直前には、別途「自動バックアップ」がシステムにより作成されます。
 - `backups/*.db` はGit管理しません。バックアップDBはローカルで保管してください。
 
 #### DBバックアップの使い方
@@ -158,7 +160,7 @@ q. 終了
 
 - メニュー `13` を選択すると、`backups` フォルダ内の `.db` バックアップ一覧から復旧元を選べます。
 - 復旧操作は `data/inventory.db` を選択したバックアップDBで上書きします。
-- 復旧前に、現在の `data/inventory.db` は `backups/before_restore_YYYYMMDD_HHMMSS.db` として自動退避されます。
+- 復旧前に、現在の `data/inventory.db` は `backups/auto_before_restore_YYYYMMDD_HHMMSS.db` として自動バックアップされます。
 - CSV品目マスタ取込ミス、棚卸修正ミス、誤操作があった場合に、正常時点のバックアップへ戻す用途で使用します。
 - 誤操作防止のため、復旧実行前に確認文字列 `RESTORE` の入力が必要です。
 - 復旧後は、メニュー `5`（品目一覧）やメニュー `1`（品目検索）で内容が想定どおり戻っていることを確認してください。
@@ -181,7 +183,29 @@ q. 終了
 4. メニュー `5`（品目一覧）で `ITEM-9999` があることを確認
 5. メニュー `13`（DB復旧）で直前のバックアップから復旧
 6. メニュー `5`（品目一覧）で `ITEM-9999` が消えていることを確認
-7. `backups` フォルダに `before_restore_YYYYMMDD_HHMMSS.db` が作成されていることを確認
+7. `backups` フォルダに `auto_before_restore_YYYYMMDD_HHMMSS.db` が作成されていることを確認
+
+
+### 自動バックアップ
+
+- 自動バックアップは、CSV品目マスタ取込・棚卸修正・DB復旧など、在庫データを大きく変更する操作の直前にシステムが自動作成するバックアップです。
+- 手動のDBバックアップ（メニュー `12`）はユーザーが任意のタイミングで作成するバックアップ、自動バックアップは危険な操作の直前にシステムが作成するバックアップとして役割を分けています。
+- CSV品目マスタ取込前には `backups/auto_csv_import_YYYYMMDD_HHMMSS.db` が作成されます。
+- 棚卸修正前には `backups/auto_stock_adjust_YYYYMMDD_HHMMSS.db` が作成されます。
+- DB復旧前には `backups/auto_before_restore_YYYYMMDD_HHMMSS.db` が作成されます。
+- 自動バックアップファイルは `backups` フォルダに `auto_` から始まるDBファイルとして保存されます。
+- `backups/*.db`, `backups/*.sqlite`, `backups/*.sqlite3` はGit管理しません。バックアップDBはローカル環境で保管してください。
+
+#### 自動バックアップの動作確認例
+
+1. `python3 src/main.py` を実行
+2. メニュー `10` でCSV品目マスタ取込を実行
+3. `backups` に `auto_csv_import_YYYYMMDD_HHMMSS.db` が作成されることを確認
+4. メニュー `11` で棚卸修正を実行
+5. `backups` に `auto_stock_adjust_YYYYMMDD_HHMMSS.db` が作成されることを確認
+6. メニュー `13` でDB復旧を実行
+7. `backups` に `auto_before_restore_YYYYMMDD_HHMMSS.db` が作成されることを確認
+8. `git status --short` で自動バックアップDBがGit管理対象になっていないことを確認
 
 
 ### CSV品目マスタ取込
@@ -189,6 +213,7 @@ q. 終了
 - CSV取込は、同一 `item_id` が既存にある場合はCSV内容で**上書き更新**します。
 - `current_stock` もCSVの値で上書きされます。
 - CSV取込はマスタ初期登録・棚卸後の反映向けです。通常の入出庫は入庫/出庫メニューを使ってください。
+- CSV取込の直前に、自動バックアップ `backups/auto_csv_import_YYYYMMDD_HHMMSS.db` が作成されます。
 
 #### CSVテンプレート
 
@@ -204,7 +229,8 @@ item_id,item_name,model_number,maker,location,unit,min_stock,current_stock,qr_co
 1. `python3 src/main.py` を実行
 2. メニュー `10`（CSV品目マスタ取込）を選択
 3. 例: `imports/items_sample.csv` を入力
-4. 取込結果（登録件数/更新件数/エラー件数）を確認
+4. `自動バックアップを作成しました:` の下に表示された `backups/auto_csv_import_YYYYMMDD_HHMMSS.db` を確認
+5. 取込結果（登録件数/更新件数/エラー件数）を確認
 
 #### ExcelでCSV保存する場合の注意
 

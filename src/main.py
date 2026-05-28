@@ -3,6 +3,7 @@
 from database import (
     adjust_stock,
     backup_database,
+    create_auto_backup,
     create_item,
     decrease_stock,
     delete_item,
@@ -235,6 +236,11 @@ def stock_adjustment() -> None:
         print("棚卸修正を中止しました。")
         return
 
+    backup_path = create_auto_backup("stock_adjust")
+    if backup_path is not None:
+        print("自動バックアップを作成しました:")
+        print(backup_path)
+
     try:
         stock_after = adjust_stock(
             item["item_id"], actual_stock, operator=operator, note=note
@@ -274,6 +280,11 @@ def import_item_master_csv() -> None:
     if not csv_path:
         print("CSVファイルパスが空です。")
         return
+
+    backup_path = create_auto_backup("csv_import")
+    if backup_path is not None:
+        print("自動バックアップを作成しました:")
+        print(backup_path)
 
     try:
         result = import_items_from_csv(csv_path)
