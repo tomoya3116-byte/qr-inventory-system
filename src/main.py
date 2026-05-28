@@ -225,6 +225,7 @@ def import_item_master_csv() -> None:
         return
 
     print("CSV取込結果:")
+    print(f"使用文字コード: {result['encoding']}")
     print(f"登録件数: {result['registered_count']}")
     print(f"更新件数: {result['updated_count']}")
     print(f"エラー件数: {result['error_count']}")
