@@ -10,7 +10,7 @@ from database import (
 
 
 def prompt_item_id() -> str:
-    return input("品目IDを入力してください: ").strip()
+    return input("品目IDまたはQRコードを入力してください: ").strip()
 
 
 def search_item() -> None:
@@ -25,12 +25,16 @@ def search_item() -> None:
         return
 
     print("--- 検索結果 ---")
-    print(f"ID: {item['id']}")
-    print(f"名称: {item['name']}")
-    print(f"説明: {item['description'] or '-'}")
-    print(f"在庫数: {item['quantity']}")
+    print(f"品目ID: {item['item_id']}")
+    print(f"品名: {item['item_name']}")
+    print(f"型番: {item['model_number'] or '-'}")
+    print(f"メーカー: {item['maker'] or '-'}")
     print(f"保管場所: {item['location'] or '-'}")
-    print(f"更新日時: {item['updated_at']}")
+    print(f"単位: {item['unit'] or '-'}")
+    print(f"最低在庫: {item['min_stock']}")
+    print(f"現在庫: {item['current_stock']}")
+    print(f"QRコード: {item['qr_code'] or '-'}")
+    print(f"備考: {item['note'] or '-'}")
 
 
 def stock_in() -> None:
@@ -42,7 +46,7 @@ def stock_in() -> None:
     try:
         quantity = int(qty_text)
         stock_after = increase_stock(item_id, quantity, operator=operator, note=note)
-        print(f"入庫を記録しました。処理後在庫: {stock_after}")
+        print(f"入庫を記録しました。処理後現在庫: {stock_after}")
     except ValueError as error:
         print(f"エラー: {error}")
 
@@ -56,7 +60,7 @@ def stock_out() -> None:
     try:
         quantity = int(qty_text)
         stock_after = decrease_stock(item_id, quantity, operator=operator, note=note)
-        print(f"出庫を記録しました。処理後在庫: {stock_after}")
+        print(f"出庫を記録しました。処理後現在庫: {stock_after}")
     except ValueError as error:
         print(f"エラー: {error}")
 
@@ -67,7 +71,12 @@ def show_transactions() -> None:
         print("品目IDが空です。")
         return
 
-    rows = get_transactions_by_item_id(item_id)
+    item = find_item_by_id(item_id)
+    if item is None:
+        print(f"品目ID '{item_id}' は見つかりませんでした。")
+        return
+
+    rows = get_transactions_by_item_id(item["item_id"])
     if not rows:
         print("履歴がありません。")
         return
@@ -75,7 +84,7 @@ def show_transactions() -> None:
     print("--- 入出庫履歴（新しい順）---")
     for row in rows:
         print(
-            f"[{row['created_at']}] {row['transaction_type']} 数量:{row['quantity']} "
+            f"[{row['transaction_date']}] {row['transaction_type']} 数量:{row['quantity']} "
             f"処理後在庫:{row['stock_after']} 作業者:{row['operator'] or '-'} 備考:{row['note'] or '-'}"
         )
 

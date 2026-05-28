@@ -4,7 +4,8 @@ QR code based inventory management system using Python and SQLite.
 
 ## 概要
 
-初期段階ではQRリーダーを利用せず、CUIで品目IDを手入力してSQLiteから品目情報を検索します。
+業務用の貯蔵品管理を想定した、CUIベースの在庫管理システムです。
+品目IDまたはQRコードを入力して検索し、入庫・出庫・履歴確認を行えます。
 
 ## セットアップ
 
@@ -14,6 +15,39 @@ QR code based inventory management system using Python and SQLite.
 ```bash
 python3 src/main.py
 ```
+
+初回実行時に `data/inventory.db` が自動作成され、テーブル初期化とサンプルデータ投入が行われます。
+
+## スキーマ（主要カラム）
+
+### items
+
+- `item_id` (TEXT, PK)
+- `item_name` (TEXT, NOT NULL)
+- `model_number` (TEXT)
+- `maker` (TEXT)
+- `location` (TEXT)
+- `unit` (TEXT)
+- `min_stock` (INTEGER, DEFAULT 0)
+- `current_stock` (INTEGER, DEFAULT 0)
+- `qr_code` (TEXT, UNIQUE)
+- `note` (TEXT)
+
+### transactions
+
+- `transaction_id` (INTEGER, PK AUTOINCREMENT)
+- `item_id` (TEXT, NOT NULL)
+- `transaction_type` (TEXT, NOT NULL) ※ IN / OUT
+- `quantity` (INTEGER, NOT NULL)
+- `stock_after` (INTEGER, NOT NULL)
+- `operator` (TEXT)
+- `transaction_date` (TEXT, DEFAULT CURRENT_TIMESTAMP)
+- `note` (TEXT)
+
+## サンプルデータ
+
+- `ITEM-0001` / ベアリング / `ABC-123` / メーカーA / 棚A-01 / 個 / 最低在庫2 / 現在庫10 / `qr_code=ITEM-0001`
+- `ITEM-0002` / Vベルト / `VB-456` / メーカーB / 棚B-02 / 本 / 最低在庫1 / 現在庫5 / `qr_code=ITEM-0002`
 
 ## 使い方
 
@@ -25,57 +59,22 @@ python3 src/main.py
 4. 入出庫履歴表示
 q. 終了
 
-### 品目検索
+## 動作確認例
 
-1. メニューで `1` を入力
-2. 品目IDを入力（例: `ITEM001`）
-3. 品目情報（名称、在庫数、保管場所など）が表示される
+`python3 src/main.py` 実行後、以下を順に入力して確認できます。
 
-### 入庫の使い方
+1. **品目検索**: `1` → `ITEM-0001`
+   - ベアリング（`item_name`）が表示される
+2. **入庫**: `2` → `ITEM-0001` → `3`（任意で作業者・備考入力）
+   - `current_stock` が 10 → 13 に増える
+3. **出庫**: `3` → `ITEM-0001` → `4`（任意で作業者・備考入力）
+   - `current_stock` が 13 → 9 に減る
+4. **履歴表示**: `4` → `ITEM-0001`
+   - `IN` と `OUT` の履歴が表示される
+5. **在庫不足確認**: `3` → `ITEM-0001` → `1000`
+   - 在庫不足エラーが表示され、在庫はマイナスにならない
 
-1. メニューで `2` を入力
-2. 品目IDを入力
-3. 入庫数量を入力（1以上の整数）
-4. 作業者を入力（任意）
-5. 備考を入力（任意）
-6. 在庫が加算され、処理後在庫が表示される
+## 補足
 
-### 出庫の使い方
-
-1. メニューで `3` を入力
-2. 品目IDを入力
-3. 出庫数量を入力（1以上の整数）
-4. 作業者を入力（任意）
-5. 備考を入力（任意）
-6. 在庫が減算され、処理後在庫が表示される
-7. 出庫数量が現在庫を超える場合はエラー表示され、在庫は減らない
-
-### 履歴確認の使い方
-
-1. メニューで `4` を入力
-2. 品目IDを入力
-3. 指定品目の入出庫履歴が新しい順で表示される
-
-### 動作確認例
-
-1. `1`（品目検索）で `ITEM001` を確認
-2. `2`（入庫）で `ITEM001` に `10` を加算
-3. `3`（出庫）で `ITEM001` から `5` を減算
-4. `4`（履歴表示）で `ITEM001` の IN / OUT 履歴を確認
-5. `3`（出庫）で現在庫を超える数量を入力し、エラーメッセージを確認
-
-## 動作確認コマンドと確認手順
-
-```bash
-python3 src/main.py
-```
-
-上記コマンドを実行後、以下の手順で確認できます。
-
-1. 品目検索ができること
-2. 入庫で在庫が増えること
-3. 出庫で在庫が減ること
-4. 在庫不足の出庫がエラーになること（在庫がマイナスにならないこと）
-5. 履歴表示で入出庫ログ（作業者・備考・処理後在庫）が確認できること
-
-初回実行時に `data/inventory.db` が自動作成され、テーブル初期化とサンプルデータ投入が行われます。
+- すべてのファイルは UTF-8 で保存されています。
+- `find_item_by_id` は `item_id` または `qr_code` で検索できます。
