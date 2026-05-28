@@ -1,5 +1,7 @@
 """Menu-driven CUI for inventory search and stock operations."""
 
+from datetime import datetime
+
 from database import (
     adjust_stock,
     backup_database,
@@ -20,6 +22,7 @@ from database import (
     restore_database_from_backup,
     update_item,
 )
+from label_utils import LABEL_DIR, generate_qr_label_sheet
 from qr_utils import QR_CODE_DIR, generate_all_qr_codes, generate_item_qr_code
 
 
@@ -373,6 +376,28 @@ def generate_all_qr_codes_menu() -> None:
     print(f"保存先フォルダ: {QR_CODE_DIR}/")
 
 
+def generate_qr_label_sheet_menu() -> None:
+    print("--- QRコード印刷用HTML生成 ---")
+    items = list_items()
+    if not items:
+        print("品目が登録されていません。")
+        return
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = LABEL_DIR / f"qr_labels_{timestamp}.html"
+
+    try:
+        saved_path = generate_qr_label_sheet(items, output_path)
+    except ValueError as error:
+        print(f"エラー: {error}")
+        return
+
+    print("QRコード印刷用HTMLを生成しました:")
+    print(saved_path)
+    print()
+    print("ブラウザで開いて印刷してください。")
+
+
 def create_database_backup() -> None:
     print("--- DBバックアップ ---")
     try:
@@ -448,6 +473,7 @@ def main() -> None:
         print("13. QRコード生成（全件）")
         print("14. DBバックアップ")
         print("15. DB復旧")
+        print("16. QRコード印刷用HTML生成")
         print("q. 終了")
         choice = input("メニューを選択してください: ").strip().lower()
 
@@ -484,8 +510,10 @@ def main() -> None:
             create_database_backup()
         elif choice == "15":
             restore_database_menu()
+        elif choice == "16":
+            generate_qr_label_sheet_menu()
         else:
-            print("無効な選択です。1-15 または q を入力してください。")
+            print("無効な選択です。1-16 または q を入力してください。")
 
 
 if __name__ == "__main__":

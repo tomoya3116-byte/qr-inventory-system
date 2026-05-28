@@ -17,3 +17,5 @@ database.txt
 
 # Generated QR code images
 qr_codes/*.png
+# Generated QR label HTML sheets
+labels/*.html
