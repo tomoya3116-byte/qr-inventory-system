@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import sqlite3
 from pathlib import Path
 from typing import Optional
@@ -214,6 +215,136 @@ def list_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
         ).fetchall()
     return rows
 
+
+def import_items_from_csv(csv_path: str, db_path: Path = DB_PATH) -> dict[str, object]:
+    """Import item master from CSV with upsert behavior."""
+    registered_count = 0
+    updated_count = 0
+    errors: list[str] = []
+
+    path = Path(csv_path)
+    if not path.exists():
+        raise ValueError(f"CSVファイルが見つかりません: {csv_path}")
+
+    with path.open("r", encoding="utf-8-sig", newline="") as csv_file, get_connection(db_path) as connection:
+        reader = csv.DictReader(csv_file)
+        required_columns = {
+            "item_id",
+            "item_name",
+            "model_number",
+            "maker",
+            "location",
+            "unit",
+            "min_stock",
+            "current_stock",
+            "qr_code",
+            "note",
+        }
+        if reader.fieldnames is None:
+            raise ValueError("CSVヘッダーが見つかりません。")
+
+        missing_columns = required_columns - set(reader.fieldnames)
+        if missing_columns:
+            missing = ", ".join(sorted(missing_columns))
+            raise ValueError(f"CSVヘッダーに不足があります: {missing}")
+
+        for row_index, row in enumerate(reader, start=2):
+            item_id = (row.get("item_id") or "").strip()
+            item_name = (row.get("item_name") or "").strip()
+
+            if not item_id:
+                errors.append(f"{row_index}行目: item_id が空です")
+                continue
+            if not item_name:
+                errors.append(f"{row_index}行目: item_name が空です")
+                continue
+
+            try:
+                min_stock = int((row.get("min_stock") or "0").strip())
+            except ValueError:
+                errors.append(f"{row_index}行目: min_stock が整数ではありません")
+                continue
+
+            try:
+                current_stock = int((row.get("current_stock") or "0").strip())
+            except ValueError:
+                errors.append(f"{row_index}行目: current_stock が整数ではありません")
+                continue
+
+            model_number = (row.get("model_number") or "").strip()
+            maker = (row.get("maker") or "").strip()
+            location = (row.get("location") or "").strip()
+            unit = (row.get("unit") or "").strip()
+            qr_code = (row.get("qr_code") or "").strip() or item_id
+            note = (row.get("note") or "").strip()
+
+            exists = connection.execute(
+                "SELECT 1 FROM items WHERE item_id = ?",
+                (item_id,),
+            ).fetchone()
+
+            if exists is None:
+                connection.execute(
+                    """
+                    INSERT INTO items (
+                        item_id, item_name, model_number, maker, location,
+                        unit, min_stock, current_stock, qr_code, note
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        item_id,
+                        item_name,
+                        model_number,
+                        maker,
+                        location,
+                        unit,
+                        min_stock,
+                        current_stock,
+                        qr_code,
+                        note,
+                    ),
+                )
+                registered_count += 1
+            else:
+                connection.execute(
+                    """
+                    UPDATE items
+                    SET
+                        item_name = ?,
+                        model_number = ?,
+                        maker = ?,
+                        location = ?,
+                        unit = ?,
+                        min_stock = ?,
+                        current_stock = ?,
+                        qr_code = ?,
+                        note = ?
+                    WHERE item_id = ?
+                    """,
+                    (
+                        item_name,
+                        model_number,
+                        maker,
+                        location,
+                        unit,
+                        min_stock,
+                        current_stock,
+                        qr_code,
+                        note,
+                        item_id,
+                    ),
+                )
+                updated_count += 1
+
+        connection.commit()
+
+    return {
+        "registered_count": registered_count,
+        "updated_count": updated_count,
+        "error_count": len(errors),
+        "errors": errors,
+    }
 
 
 

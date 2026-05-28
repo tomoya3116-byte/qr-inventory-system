@@ -7,6 +7,7 @@ from database import (
     find_item_by_id,
     get_transactions_by_item_id,
     increase_stock,
+    import_items_from_csv,
     initialize_database,
     list_items,
     list_low_stock_items,
@@ -210,6 +211,30 @@ def show_transactions() -> None:
             f"処理後在庫:{row['stock_after']} 作業者:{row['operator'] or '-'} 備考:{row['note'] or '-'}"
         )
 
+def import_item_master_csv() -> None:
+    print("--- CSV品目マスタ取込 ---")
+    csv_path = input("CSVファイルパスを入力してください: ").strip()
+    if not csv_path:
+        print("CSVファイルパスが空です。")
+        return
+
+    try:
+        result = import_items_from_csv(csv_path)
+    except ValueError as error:
+        print(f"エラー: {error}")
+        return
+
+    print("CSV取込結果:")
+    print(f"登録件数: {result['registered_count']}")
+    print(f"更新件数: {result['updated_count']}")
+    print(f"エラー件数: {result['error_count']}")
+
+    errors = result["errors"]
+    if errors:
+        print("--- エラー詳細 ---")
+        for message in errors:
+            print(message)
+
 
 def main() -> None:
     initialize_database()
@@ -225,6 +250,7 @@ def main() -> None:
         print("7. 品目編集")
         print("8. 品目削除")
         print("9. 最低在庫アラート")
+        print("10. CSV品目マスタ取込")
         print("q. 終了")
         choice = input("メニューを選択してください: ").strip().lower()
 
@@ -249,8 +275,10 @@ def main() -> None:
             remove_item()
         elif choice == "9":
             show_low_stock_alert()
+        elif choice == "10":
+            import_item_master_csv()
         else:
-            print("無効な選択です。1-9 または q を入力してください。")
+            print("無効な選択です。1-10 または q を入力してください。")
 
 
 if __name__ == "__main__":
