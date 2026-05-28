@@ -26,42 +26,67 @@ def initialize_database(db_path: Path = DB_PATH) -> None:
         connection.executescript(schema_sql)
         connection.execute(
             """
-            INSERT OR IGNORE INTO items (id, name, description, quantity, location)
+            INSERT OR IGNORE INTO items (
+                item_id,
+                item_name,
+                model_number,
+                maker,
+                location,
+                unit,
+                min_stock,
+                current_stock,
+                qr_code,
+                note
+            )
             VALUES
-                (?, ?, ?, ?, ?),
-                (?, ?, ?, ?, ?),
-                (?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                "ITEM001",
-                "Notebook",
-                "A5 size notebook",
-                50,
-                "Shelf-A1",
-                "ITEM002",
-                "Ballpoint Pen",
-                "Blue ink pen",
-                120,
-                "Shelf-B2",
-                "ITEM003",
-                "Packing Tape",
-                "48mm packing tape",
-                35,
-                "Shelf-C1",
+                "ITEM-0001",
+                "ベアリング",
+                "ABC-123",
+                "メーカーA",
+                "棚A-01",
+                "個",
+                2,
+                10,
+                "QR-ITEM-0001",
+                "",
+                "ITEM-0002",
+                "Vベルト",
+                "VB-456",
+                "メーカーB",
+                "棚B-02",
+                "本",
+                1,
+                5,
+                "QR-ITEM-0002",
+                "",
             ),
         )
         connection.commit()
 
 
 def find_item_by_id(item_id: str, db_path: Path = DB_PATH) -> Optional[sqlite3.Row]:
-    """Find a single item by its ID."""
+    """Find a single item by item_id or qr_code."""
     with get_connection(db_path) as connection:
         row = connection.execute(
             """
-            SELECT id, name, description, quantity, location, updated_at
+            SELECT
+                item_id,
+                item_name,
+                model_number,
+                maker,
+                location,
+                unit,
+                min_stock,
+                current_stock,
+                qr_code,
+                note
             FROM items
-            WHERE id = ?
+            WHERE item_id = ? OR qr_code = ?
             """,
-            (item_id,),
+            (item_id, item_id),
         ).fetchone()
     return row
