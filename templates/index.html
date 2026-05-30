@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}トップ | QR在庫管理 Web{% endblock %}
+{% block page_title %}QR在庫管理 Web{% endblock %}
+{% block content %}
+<section class="hero-card">
+  <p class="eyebrow">スマホ・PCブラウザ対応</p>
+  <h2>現場の入出庫をすばやく記録</h2>
+  <p>品目検索、入庫、出庫、最低在庫アラートを大きなボタンで操作できます。</p>
+</section>
+
+<section class="stats-grid" aria-label="在庫サマリー">
+  <div class="stat-card">
+    <span class="stat-card__label">登録品目</span>
+    <strong>{{ item_count }}</strong>
+    <span>件</span>
+  </div>
+  <div class="stat-card stat-card--alert">
+    <span class="stat-card__label">最低在庫アラート</span>
+    <strong>{{ low_stock_count }}</strong>
+    <span>件</span>
+  </div>
+</section>
+
+<section class="menu-grid" aria-label="機能メニュー">
+  <a class="menu-card" href="/items"><span>📦</span><strong>品目一覧</strong><small>全品目の在庫を確認</small></a>
+  <a class="menu-card" href="/search"><span>🔎</span><strong>品目検索</strong><small>IDまたはQRコードで検索</small></a>
+  <a class="menu-card" href="/stock-in"><span>⬆️</span><strong>入庫</strong><small>在庫を追加</small></a>
+  <a class="menu-card" href="/stock-out"><span>⬇️</span><strong>出庫</strong><small>在庫を減算</small></a>
+  <a class="menu-card" href="/low-stock"><span>⚠️</span><strong>最低在庫</strong><small>補充対象を確認</small></a>
+</section>
+{% endblock %}

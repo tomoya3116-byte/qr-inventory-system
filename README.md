@@ -39,6 +39,50 @@ python src/gui_main.py
 既存のCUI版は引き続き `python src/main.py` で利用できます。
 
 
+
+## Web版の起動方法
+
+Ver2.0 Web Phase 1 では、既存のCUI版・GUI版を残したまま、FastAPIベースのWeb版を `src/web_app.py` として追加しています。
+スマートフォンやPCブラウザから、トップページ、品目一覧、品目検索、入庫、出庫、最低在庫アラートを利用できます。
+
+1. リポジトリのルートで必要ライブラリをインストール
+
+```bash
+pip install -r requirements.txt
+```
+
+2. リポジトリのルートでWeb版を起動
+
+```bash
+uvicorn src.web_app:app --reload --host 0.0.0.0 --port 8000
+```
+
+3. PCブラウザで以下にアクセス
+
+```text
+http://localhost:8000
+```
+
+### 同じWi-Fi内のスマートフォンからアクセスする方法
+
+1. Web版を起動しているPCのIPアドレスを確認します。
+   - Windows例: `ipconfig`
+   - macOS / Linux例: `ifconfig` または `ip addr`
+2. スマートフォンをPCと同じWi-Fiに接続します。
+3. スマートフォンのブラウザで以下の形式のURLにアクセスします。
+
+```text
+http://PCのIPアドレス:8000
+```
+
+例: PCのIPアドレスが `192.168.1.10` の場合
+
+```text
+http://192.168.1.10:8000
+```
+
+ファイアウォールでポート `8000` がブロックされている場合は、PC側で許可してください。
+
 ## GUI版の使い方
 
 CustomTkinterを使ったGUI版は、現場作業者が日常操作を直感的に行えるようにした画面です。
