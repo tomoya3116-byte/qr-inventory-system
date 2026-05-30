@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}品目検索 | QR在庫管理 Web{% endblock %}
+{% block page_title %}品目検索{% endblock %}
+{% block content %}
+<section class="section-card">
+  <h2>ID・QRコードで検索</h2>
+  <form class="ios-form" method="get" action="/search">
+    <label for="q">品目IDまたはQRコード</label>
+    <input id="q" name="q" type="search" value="{{ keyword }}" placeholder="例: ITEM-0001" autocomplete="off" autofocus>
+    <button type="submit" class="primary-button">検索する</button>
+  </form>
+</section>
+
+{% if message %}
+  <div class="message message--error" role="alert">{{ message }}</div>
+{% endif %}
+
+{% if item %}
+<section class="section-card">
+  <h2>検索結果</h2>
+  {% include "partials/item_card.html" %}
+  <div class="action-row">
+    <a class="secondary-button" href="/stock-in?item_id={{ item.item_id }}">入庫へ</a>
+    <a class="secondary-button" href="/stock-out?item_id={{ item.item_id }}">出庫へ</a>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

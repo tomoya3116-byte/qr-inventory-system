@@ -1,3 +1,7 @@
 qrcode
 Pillow
 customtkinter
+fastapi
+uvicorn
+jinja2
+python-multipart

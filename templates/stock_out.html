@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}出庫 | QR在庫管理 Web{% endblock %}
+{% block page_title %}出庫{% endblock %}
+{% block content %}
+<section class="section-card">
+  <h2>出庫フォーム</h2>
+  <p class="lead">在庫不足の場合は出庫せず、日本語メッセージでお知らせします。</p>
+  <form class="ios-form" method="post" action="/stock-out">
+    <label for="item_id">品目IDまたはQRコード</label>
+    <input id="item_id" name="item_id" type="text" value="{{ form.item_id if form else request.query_params.get('item_id', '') }}" placeholder="例: ITEM-0001" autocomplete="off" required>
+
+    <label for="quantity">出庫数量</label>
+    <input id="quantity" name="quantity" type="number" min="1" step="1" inputmode="numeric" value="{{ form.quantity if form else '' }}" placeholder="例: 1" required>
+
+    <label for="operator">作業者</label>
+    <input id="operator" name="operator" type="text" value="{{ form.operator if form else '' }}" placeholder="任意">
+
+    <label for="note">備考</label>
+    <textarea id="note" name="note" rows="3" placeholder="任意">{{ form.note if form else '' }}</textarea>
+
+    <button type="submit" class="danger-button">出庫する</button>
+  </form>
+</section>
+
+{% if message %}
+  <div class="message message--{{ message_type }}" role="alert">{{ message }}</div>
+{% endif %}
+
+{% if item %}
+<section class="section-card">
+  <h2>対象品目</h2>
+  {% include "partials/item_card.html" %}
+</section>
+{% endif %}
+{% endblock %}

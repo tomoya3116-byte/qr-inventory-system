@@ -1,0 +1,18 @@
+<article class="item-card">
+  <div class="item-card__top">
+    <div>
+      <p class="item-id">{{ item.item_id }}</p>
+      <h3>{{ item.item_name }}</h3>
+    </div>
+    <div class="stock-pill {% if item.current_stock <= item.min_stock %}stock-pill--alert{% endif %}">
+      {{ item.current_stock }} {{ item.unit }}
+    </div>
+  </div>
+  <dl class="item-meta">
+    <div><dt>型式</dt><dd>{{ item.model_number or '—' }}</dd></div>
+    <div><dt>メーカー</dt><dd>{{ item.maker or '—' }}</dd></div>
+    <div><dt>保管場所</dt><dd>{{ item.location or '—' }}</dd></div>
+    <div><dt>最低在庫</dt><dd>{{ item.min_stock }} {{ item.unit }}</dd></div>
+  </dl>
+  {% if item.note %}<p class="note">{{ item.note }}</p>{% endif %}
+</article>
