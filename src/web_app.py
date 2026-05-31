@@ -1,21 +1,23 @@
-"""FastAPI web application for QR inventory system Ver2.0 Phase 2."""
+"""FastAPI web application for QR inventory system Ver2.0 Phase 3."""
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src import database
+from src import database, label_utils, qr_utils
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = ROOT_DIR / "templates"
 STATIC_DIR = ROOT_DIR / "static"
+UPLOAD_DIR = ROOT_DIR / "data" / "web_uploads"
 
 
 @asynccontextmanager
@@ -28,7 +30,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="QR Inventory System Web",
     description="スマートフォン・PCブラウザ向け在庫管理Webアプリ",
-    version="2.0.0-phase2",
+    version="2.0.0-phase3",
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -45,12 +47,72 @@ NAV_ITEMS = [
     {"label": "出庫", "url": "/stock-out"},
     {"label": "棚卸修正", "url": "/stock-adjust"},
     {"label": "最低在庫", "url": "/low-stock"},
+    {"label": "CSV取込", "url": "/csv-import"},
+    {"label": "QRコード", "url": "/qr-codes"},
+    {"label": "ラベル印刷", "url": "/labels"},
+    {"label": "DBバックアップ", "url": "/db-backup"},
+    {"label": "DB復旧", "url": "/db-restore"},
 ]
 
 
 def _context(request: Request, **extra: Any) -> dict[str, Any]:
     """Build common template context."""
     return {"request": request, "nav_items": NAV_ITEMS, **extra}
+
+
+def _format_path(path: Path | None) -> str:
+    """Return a repository-relative display path when possible."""
+    if path is None:
+        return "DB未作成のため作成なし"
+    try:
+        return str(path.resolve().relative_to(ROOT_DIR.resolve()))
+    except ValueError:
+        return str(path)
+
+
+def _format_backup_rows() -> list[dict[str, object]]:
+    """Return backup metadata formatted for template display."""
+    rows: list[dict[str, object]] = []
+    for index, backup in enumerate(database.list_backup_files(), start=1):
+        updated_at = backup["updated_at"]
+        rows.append(
+            {
+                "index": index,
+                "filename": backup["filename"],
+                "path": _format_path(Path(backup["path"])),
+                "updated_at": updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "size": backup["size"],
+            }
+        )
+    return rows
+
+
+def _resolve_uploaded_csv(upload_path: str) -> Path:
+    """Validate that an import confirmation refers to a saved Web upload."""
+    path = Path(upload_path)
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    resolved = path.resolve()
+    upload_root = UPLOAD_DIR.resolve()
+    if upload_root != resolved and upload_root not in resolved.parents:
+        raise ValueError("CSV取込用にアップロードされたファイルを指定してください。")
+    if not resolved.exists() or not resolved.is_file():
+        raise ValueError("プレビュー済みCSVファイルが見つかりません。再アップロードしてください。")
+    return resolved
+
+
+def _save_uploaded_csv(upload_file: UploadFile, content: bytes) -> Path:
+    """Save an uploaded CSV for preview/confirmed import."""
+    if not upload_file.filename:
+        raise ValueError("CSVファイルを選択してください。")
+    if not content:
+        raise ValueError("CSVファイルが空です。")
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    safe_name = Path(upload_file.filename).name.replace(" ", "_")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    upload_path = UPLOAD_DIR / f"{timestamp}_{safe_name}"
+    upload_path.write_bytes(content)
+    return upload_path
 
 
 def _parse_quantity(quantity_text: str, label: str) -> int:
@@ -557,4 +619,292 @@ async def low_stock(request: Request):
         request,
         "low_stock.html",
         _context(request, items=low_stock_items, message=message),
+    )
+
+
+@app.get("/csv-import")
+async def csv_import_form(request: Request):
+    """Show CSV item master import preview form."""
+    return templates.TemplateResponse(
+        request,
+        "csv_import.html",
+        _context(request),
+    )
+
+
+@app.post("/csv-import/preview")
+async def csv_import_preview(request: Request, csv_file: UploadFile = File(...)):
+    """Preview an uploaded item master CSV without changing the database."""
+    message = ""
+    message_type = "success"
+    preview = None
+    upload_path = None
+
+    try:
+        upload_path = _save_uploaded_csv(csv_file, await csv_file.read())
+        preview = database.preview_import_items_from_csv(str(upload_path))
+        if preview["error_count"]:
+            message = "CSVにエラーがあります。修正後に再アップロードしてください。"
+            message_type = "error"
+        else:
+            message = "CSV取込プレビューが完了しました。内容を確認して取込を実行できます。"
+    except ValueError as error:
+        message = str(error)
+        message_type = "error"
+
+    return templates.TemplateResponse(
+        request,
+        "csv_import.html",
+        _context(
+            request,
+            message=message,
+            message_type=message_type,
+            preview=preview,
+            upload_path=_format_path(upload_path) if upload_path else "",
+        ),
+    )
+
+
+@app.post("/csv-import/execute")
+async def csv_import_execute(request: Request, upload_path: str = Form(...)):
+    """Import a previously previewed CSV when it has no validation errors."""
+    message = ""
+    message_type = "success"
+    preview = None
+    result = None
+    backup_path = None
+
+    try:
+        csv_path = _resolve_uploaded_csv(upload_path)
+        preview = database.preview_import_items_from_csv(str(csv_path))
+        if preview["error_count"]:
+            raise ValueError("CSVにエラーがあるため取込できません。プレビュー結果を確認してください。")
+        backup_path = database.create_auto_backup("csv_import")
+        result = database.import_items_from_csv(str(csv_path))
+        message = "CSV品目マスタを取り込みました。"
+    except ValueError as error:
+        message = str(error)
+        message_type = "error"
+
+    return templates.TemplateResponse(
+        request,
+        "csv_import.html",
+        _context(
+            request,
+            message=message,
+            message_type=message_type,
+            preview=preview,
+            result=result,
+            backup_path=_format_path(backup_path) if backup_path else "",
+            upload_path=upload_path,
+        ),
+    )
+
+
+@app.get("/qr-codes")
+async def qr_codes_form(request: Request):
+    """Show QR code generation form."""
+    return templates.TemplateResponse(
+        request,
+        "qr_codes.html",
+        _context(request, item_count=len(database.list_items())),
+    )
+
+
+@app.post("/qr-codes/single")
+async def qr_code_single(request: Request, item_id: str = Form(...)):
+    """Generate one item QR code using qr_utils.py."""
+    message = ""
+    message_type = "success"
+    saved_path = None
+    normalized_item_id = item_id.strip()
+
+    try:
+        normalized_item_id = _normalize_item_id(item_id)
+        item = database.find_item_by_id(normalized_item_id)
+        if item is None:
+            raise LookupError("品目が見つかりません")
+        saved_path = qr_utils.generate_item_qr_code(item)
+        message = "QRコードを生成しました。"
+    except (LookupError, ValueError) as error:
+        message = str(error)
+        message_type = "error"
+
+    return templates.TemplateResponse(
+        request,
+        "qr_codes.html",
+        _context(
+            request,
+            message=message,
+            message_type=message_type,
+            saved_path=_format_path(saved_path) if saved_path else "",
+            form={"item_id": normalized_item_id},
+            item_count=len(database.list_items()),
+        ),
+    )
+
+
+@app.post("/qr-codes/all")
+async def qr_code_all(request: Request):
+    """Generate QR codes for all items using qr_utils.py."""
+    message = ""
+    message_type = "success"
+    result = None
+
+    try:
+        items = database.list_items()
+        result = qr_utils.generate_all_qr_codes(items)
+        message = "全品目のQRコードを生成しました。"
+    except ValueError as error:
+        message = str(error)
+        message_type = "error"
+
+    return templates.TemplateResponse(
+        request,
+        "qr_codes.html",
+        _context(
+            request,
+            message=message,
+            message_type=message_type,
+            result=result,
+            saved_paths=(
+                [_format_path(Path(path)) for path in result["paths"]]
+                if result
+                else []
+            ),
+            item_count=len(database.list_items()),
+        ),
+    )
+
+
+@app.get("/labels")
+async def labels_form(request: Request):
+    """Show QR label print HTML generation form."""
+    return templates.TemplateResponse(
+        request,
+        "labels.html",
+        _context(request, item_count=len(database.list_items())),
+    )
+
+
+@app.post("/labels/generate")
+async def labels_generate(request: Request):
+    """Generate printable QR label HTML using label_utils.py."""
+    message = ""
+    message_type = "success"
+    saved_path = None
+
+    try:
+        items = database.list_items()
+        if not items:
+            raise ValueError("品目が登録されていません。")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        saved_path = label_utils.generate_qr_label_sheet(
+            items, label_utils.LABEL_DIR / f"qr_labels_{timestamp}.html"
+        )
+        message = "QRラベル印刷用HTMLを生成しました。"
+    except ValueError as error:
+        message = str(error)
+        message_type = "error"
+
+    return templates.TemplateResponse(
+        request,
+        "labels.html",
+        _context(
+            request,
+            message=message,
+            message_type=message_type,
+            saved_path=_format_path(saved_path) if saved_path else "",
+            item_count=len(database.list_items()),
+        ),
+    )
+
+
+@app.get("/db-backup")
+async def db_backup_form(request: Request):
+    """Show DB backup form and backup list."""
+    return templates.TemplateResponse(
+        request,
+        "db_backup.html",
+        _context(request, backups=_format_backup_rows()),
+    )
+
+
+@app.post("/db-backup")
+async def db_backup_create(request: Request):
+    """Create a manual database backup using database.py."""
+    message = ""
+    message_type = "success"
+    backup_path = None
+
+    try:
+        backup_path = database.backup_database()
+        message = "DBバックアップを作成しました。"
+    except (FileNotFoundError, ValueError) as error:
+        message = str(error)
+        message_type = "error"
+
+    return templates.TemplateResponse(
+        request,
+        "db_backup.html",
+        _context(
+            request,
+            message=message,
+            message_type=message_type,
+            backup_path=_format_path(backup_path) if backup_path else "",
+            backups=_format_backup_rows(),
+        ),
+    )
+
+
+@app.get("/db-restore")
+async def db_restore_form(request: Request):
+    """Show DB restore form with backup list."""
+    return templates.TemplateResponse(
+        request,
+        "db_restore.html",
+        _context(request, backups=_format_backup_rows()),
+    )
+
+
+@app.post("/db-restore")
+async def db_restore_execute(
+    request: Request,
+    backup_filename: str = Form(...),
+    confirmation: str = Form(...),
+):
+    """Restore the database after requiring RESTORE confirmation."""
+    message = ""
+    message_type = "success"
+    restore_result = None
+
+    try:
+        if confirmation.strip() != "RESTORE":
+            raise ValueError("確認文字列が一致しないため、DB復旧を中止しました。")
+        backup_names = {
+            str(row["filename"]): row for row in database.list_backup_files()
+        }
+        selected = backup_names.get(backup_filename)
+        if selected is None:
+            raise ValueError("選択したバックアップが見つかりません。")
+        restore_result = database.restore_database_from_backup(selected["path"])
+        message = "DBを復旧しました。"
+    except (FileNotFoundError, ValueError) as error:
+        message = str(error)
+        message_type = "error"
+
+    return templates.TemplateResponse(
+        request,
+        "db_restore.html",
+        _context(
+            request,
+            message=message,
+            message_type=message_type,
+            restore_result=(
+                {key: _format_path(value) for key, value in restore_result.items()}
+                if restore_result
+                else None
+            ),
+            backups=_format_backup_rows(),
+        ),
     )

@@ -549,6 +549,7 @@ def _import_items_from_csv_with_encoding(
     errors: list[str] = []
     seen_item_ids: set[object] = set()
     seen_qr_codes: dict[object, object] = {}
+    import_plan: list[tuple[str, dict[str, object]]] = []
 
     with (
         path.open("r", encoding=encoding, newline="") as csv_file,
@@ -571,7 +572,23 @@ def _import_items_from_csv_with_encoding(
                 continue
 
             action = _classify_item_import_action(connection, item["item_id"])
+            import_plan.append((action, item))
+            if action == "insert":
+                registered_count += 1
+            else:
+                updated_count += 1
 
+        if errors:
+            connection.rollback()
+            return {
+                "registered_count": registered_count,
+                "updated_count": updated_count,
+                "error_count": len(errors),
+                "errors": errors,
+                "encoding": encoding,
+            }
+
+        for action, item in import_plan:
             if action == "insert":
                 connection.execute(
                     """
@@ -594,7 +611,6 @@ def _import_items_from_csv_with_encoding(
                         item["note"],
                     ),
                 )
-                registered_count += 1
             else:
                 connection.execute(
                     """
@@ -624,7 +640,6 @@ def _import_items_from_csv_with_encoding(
                         item["item_id"],
                     ),
                 )
-                updated_count += 1
 
         connection.commit()
 
