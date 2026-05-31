@@ -38,6 +38,7 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 NAV_ITEMS = [
     {"label": "トップ", "url": "/"},
     {"label": "品目一覧", "url": "/items"},
+    {"label": "管理者", "url": "/admin"},
     {"label": "品目登録", "url": "/items/new"},
     {"label": "品目検索", "url": "/search"},
     {"label": "入庫", "url": "/stock-in"},
@@ -113,6 +114,22 @@ async def items(request: Request):
         request,
         "items.html",
         _context(request, items=database.list_items()),
+    )
+
+
+@app.get("/admin")
+async def admin_menu(request: Request):
+    """Show the Web Phase 2 administrator menu."""
+    items = database.list_items()
+    low_stock_items = database.list_low_stock_items()
+    return templates.TemplateResponse(
+        request,
+        "admin.html",
+        _context(
+            request,
+            item_count=len(items),
+            low_stock_count=len(low_stock_items),
+        ),
     )
 
 
