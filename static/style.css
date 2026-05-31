@@ -603,3 +603,18 @@ body {
     font-size: 1.35rem;
   }
 }
+
+.preview-row--insert td:nth-child(2) {
+  color: var(--success-text);
+  font-weight: 800;
+}
+
+.preview-row--update td:nth-child(2) {
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
+.preview-row--error td {
+  background: var(--error-bg);
+  color: var(--error-text);
+}

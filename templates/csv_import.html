@@ -26,6 +26,45 @@
     <div><span>更新予定件数</span><strong>{{ preview.updated_count }}</strong></div>
     <div class="{% if preview.error_count %}summary-alert{% endif %}"><span>エラー件数</span><strong>{{ preview.error_count }}</strong></div>
   </div>
+  {% if preview.rows %}
+    <h3>CSV内容プレビュー</h3>
+    <p class="note">各行が「登録」「更新」「エラー」のどれとして処理されるかを確認できます。</p>
+    <div class="responsive-table" role="region" aria-label="CSV内容プレビュー" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th>行</th>
+            <th>処理</th>
+            <th>品目ID</th>
+            <th>品名</th>
+            <th>型式</th>
+            <th>保管場所</th>
+            <th>現在庫</th>
+            <th>エラー</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview.rows %}
+          <tr class="preview-row--{{ row.action }}">
+            <td>{{ row.row_index }}</td>
+            <td>
+              {% if row.action == "insert" %}登録
+              {% elif row.action == "update" %}更新
+              {% else %}エラー
+              {% endif %}
+            </td>
+            <td>{{ row.item_id }}</td>
+            <td>{{ row.item_name }}</td>
+            <td>{{ row.model_number }}</td>
+            <td>{{ row.location }}</td>
+            <td>{{ row.current_stock }}</td>
+            <td>{% if row.errors %}{{ row.errors | join(" / ") }}{% else %}-{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
   {% if preview.errors %}
     <div class="error-list" role="alert">
       <strong>エラー詳細</strong>

@@ -501,6 +501,7 @@ def _preview_import_items_from_csv_with_encoding(
     registered_count = 0
     updated_count = 0
     errors: list[str] = []
+    preview_rows: list[dict[str, object]] = []
     seen_item_ids: set[object] = set()
     seen_qr_codes: dict[object, object] = {}
 
@@ -515,6 +516,18 @@ def _preview_import_items_from_csv_with_encoding(
             item, row_errors = _parse_item_csv_row(row, row_index)
             if row_errors:
                 errors.extend(row_errors)
+                preview_rows.append(
+                    {
+                        "row_index": row_index,
+                        "action": "error",
+                        "item_id": (row.get("item_id") or "").strip(),
+                        "item_name": (row.get("item_name") or "").strip(),
+                        "model_number": (row.get("model_number") or "").strip(),
+                        "location": (row.get("location") or "").strip(),
+                        "current_stock": (row.get("current_stock") or "").strip(),
+                        "errors": row_errors,
+                    }
+                )
                 continue
 
             constraint_errors = _validate_item_import_constraints(
@@ -522,6 +535,18 @@ def _preview_import_items_from_csv_with_encoding(
             )
             if constraint_errors:
                 errors.extend(constraint_errors)
+                preview_rows.append(
+                    {
+                        "row_index": row_index,
+                        "action": "error",
+                        "item_id": item["item_id"],
+                        "item_name": item["item_name"],
+                        "model_number": item["model_number"],
+                        "location": item["location"],
+                        "current_stock": item["current_stock"],
+                        "errors": constraint_errors,
+                    }
+                )
                 continue
 
             action = _classify_item_import_action(connection, item["item_id"])
@@ -529,6 +554,18 @@ def _preview_import_items_from_csv_with_encoding(
                 registered_count += 1
             else:
                 updated_count += 1
+            preview_rows.append(
+                {
+                    "row_index": row_index,
+                    "action": action,
+                    "item_id": item["item_id"],
+                    "item_name": item["item_name"],
+                    "model_number": item["model_number"],
+                    "location": item["location"],
+                    "current_stock": item["current_stock"],
+                    "errors": [],
+                }
+            )
 
     return {
         "registered_count": registered_count,
@@ -536,6 +573,7 @@ def _preview_import_items_from_csv_with_encoding(
         "error_count": len(errors),
         "errors": errors,
         "encoding": encoding,
+        "rows": preview_rows,
     }
 
 
