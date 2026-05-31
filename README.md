@@ -51,25 +51,33 @@ Ver2.0 Web Phase 1 では、既存のCUI版・GUI版を残したまま、FastAPI
 pip install -r requirements.txt
 ```
 
-2. リポジトリのルートでWeb版を起動
+2. リポジトリのルートでPCローカル確認用にWeb版を起動
 
 ```bash
-uvicorn src.web_app:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn src.web_app:app --reload --host 127.0.0.1 --port 8000
 ```
 
 3. PCブラウザで以下にアクセス
 
 ```text
-http://localhost:8000
+http://127.0.0.1:8000
 ```
+
+同じPCからのみ確認する場合は `127.0.0.1` を使います。スマートフォンなど別端末から接続する場合は、次の「同じWi-Fi内のスマートフォンからアクセスする方法」のように `0.0.0.0` で起動してください。
 
 ### 同じWi-Fi内のスマートフォンからアクセスする方法
 
-1. Web版を起動しているPCのIPアドレスを確認します。
+1. リポジトリのルートで、PC以外の端末からも受け付ける設定でWeb版を起動します。
+
+```bash
+python -m uvicorn src.web_app:app --reload --host 0.0.0.0 --port 8000
+```
+
+2. Web版を起動しているPCのIPアドレスを確認します。
    - Windows例: `ipconfig`
    - macOS / Linux例: `ifconfig` または `ip addr`
-2. スマートフォンをPCと同じWi-Fiに接続します。
-3. スマートフォンのブラウザで以下の形式のURLにアクセスします。
+3. スマートフォンをPCと同じWi-Fiに接続します。
+4. スマートフォンのブラウザで以下の形式のURLにアクセスします。
 
 ```text
 http://PCのIPアドレス:8000
