@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}品目編集 | QR在庫管理 Web{% endblock %}
+{% block page_title %}品目編集{% endblock %}
+{% block content %}
+{% if message %}
+  <div class="message message--{{ message_type }}" role="alert">{{ message }}</div>
+{% endif %}
+
+{% if item %}
+<section class="section-card">
+  <div class="section-heading section-heading--stacked">
+    <div>
+      <h2>{{ item.item_id }} を編集</h2>
+      <p>現在庫 {{ item.current_stock }} {{ item.unit }}</p>
+    </div>
+  </div>
+  <form class="ios-form" method="post" action="/items/{{ item.item_id }}/edit">
+    {% include "partials/item_form_fields.html" %}
+    <button type="submit" class="primary-button">更新する</button>
+  </form>
+</section>
+
+<section class="section-card subtle-card">
+  <h2>削除が必要な場合</h2>
+  <p class="lead">削除は入出庫・棚卸履歴がない品目だけ実行できます。</p>
+  <a class="danger-link-button" href="/items/{{ item.item_id }}/delete">削除確認へ進む</a>
+</section>
+{% else %}
+<section class="section-card">
+  <p class="empty-message">品目一覧または検索から編集対象を選択してください。</p>
+  <a class="primary-button" href="/items">品目一覧へ</a>
+</section>
+{% endif %}
+{% endblock %}

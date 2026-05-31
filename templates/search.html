@@ -19,9 +19,11 @@
 <section class="section-card">
   <h2>検索結果</h2>
   {% include "partials/item_card.html" %}
-  <div class="action-row">
+  <div class="action-row action-row--wrap">
     <a class="secondary-button" href="/stock-in?item_id={{ item.item_id }}">入庫へ</a>
     <a class="secondary-button" href="/stock-out?item_id={{ item.item_id }}">出庫へ</a>
+    <a class="secondary-button" href="/stock-adjust?item_id={{ item.item_id }}">棚卸修正へ</a>
+    <a class="secondary-button" href="/items/{{ item.item_id }}/edit">編集へ</a>
   </div>
 </section>
 {% endif %}
