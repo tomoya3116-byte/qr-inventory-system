@@ -75,6 +75,7 @@ async def index(request: Request):
     items = database.list_items()
     low_stock_items = database.list_low_stock_items()
     return templates.TemplateResponse(
+        request,
         "index.html",
         _context(
             request,
@@ -88,6 +89,7 @@ async def index(request: Request):
 async def items(request: Request):
     """Show all registered items."""
     return templates.TemplateResponse(
+        request,
         "items.html",
         _context(request, items=database.list_items()),
     )
@@ -100,6 +102,7 @@ async def search(request: Request, q: str = ""):
     item = database.find_item_by_id(keyword) if keyword else None
     message = "品目が見つかりません" if keyword and item is None else ""
     return templates.TemplateResponse(
+        request,
         "search.html",
         _context(request, keyword=keyword, item=item, message=message),
     )
@@ -108,7 +111,11 @@ async def search(request: Request, q: str = ""):
 @app.get("/stock-in")
 async def stock_in_form(request: Request):
     """Show stock-in form."""
-    return templates.TemplateResponse("stock_in.html", _context(request))
+    return templates.TemplateResponse(
+        request,
+        "stock_in.html",
+        _context(request),
+    )
 
 
 @app.post("/stock-in")
@@ -145,6 +152,7 @@ async def stock_in_submit(
         message_type = "error"
 
     return templates.TemplateResponse(
+        request,
         "stock_in.html",
         _context(
             request,
@@ -165,7 +173,11 @@ async def stock_in_submit(
 @app.get("/stock-out")
 async def stock_out_form(request: Request):
     """Show stock-out form."""
-    return templates.TemplateResponse("stock_out.html", _context(request))
+    return templates.TemplateResponse(
+        request,
+        "stock_out.html",
+        _context(request),
+    )
 
 
 @app.post("/stock-out")
@@ -202,6 +214,7 @@ async def stock_out_submit(
         message_type = "error"
 
     return templates.TemplateResponse(
+        request,
         "stock_out.html",
         _context(
             request,
@@ -225,6 +238,7 @@ async def low_stock(request: Request):
     low_stock_items = database.list_low_stock_items()
     message = "最低在庫を下回っている品目はありません。" if not low_stock_items else ""
     return templates.TemplateResponse(
+        request,
         "low_stock.html",
         _context(request, items=low_stock_items, message=message),
     )
