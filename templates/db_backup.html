@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}DBバックアップ | QR在庫管理 Web{% endblock %}
+{% block page_title %}DBバックアップ{% endblock %}
+{% block content %}
+{% if message %}<div class="message message--{{ message_type }}">{{ message }}</div>{% endif %}
+<section class="section-card">
+  <h2>DBバックアップ</h2>
+  <p class="note">現在の data/inventory.db を backups/ にコピーします。</p>
+  <form class="ios-form" action="/db-backup" method="post">
+    <button class="primary-button" type="submit">バックアップ作成</button>
+  </form>
+  {% if backup_path %}<p class="path-box">保存先: {{ backup_path }}</p>{% endif %}
+</section>
+<section class="section-card">
+  <h2>バックアップ一覧</h2>
+  {% include "partials/backup_list.html" %}
+</section>
+{% endblock %}

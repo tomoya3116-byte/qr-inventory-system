@@ -1,0 +1,14 @@
+{% if backups %}
+  <div class="responsive-table" role="region" aria-label="バックアップ一覧" tabindex="0">
+    <table>
+      <thead><tr><th>#</th><th>ファイル名</th><th>更新日時</th><th>サイズ</th></tr></thead>
+      <tbody>
+        {% for backup in backups %}
+        <tr><td>{{ backup.index }}</td><td>{{ backup.filename }}</td><td>{{ backup.updated_at }}</td><td>{{ backup.size }} bytes</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="empty-message">バックアップはまだありません。</p>
+{% endif %}

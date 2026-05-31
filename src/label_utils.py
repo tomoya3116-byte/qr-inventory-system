@@ -7,7 +7,10 @@ from html import escape
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from qr_utils import QR_CODE_DIR, generate_item_qr_code
+if __package__:
+    from .qr_utils import QR_CODE_DIR, generate_item_qr_code
+else:
+    from qr_utils import QR_CODE_DIR, generate_item_qr_code
 
 LABEL_DIR = Path("labels")
 

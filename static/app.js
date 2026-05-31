@@ -2,8 +2,8 @@
   const forms = document.querySelectorAll("form");
 
   forms.forEach((form) => {
-    form.addEventListener("submit", () => {
-      const button = form.querySelector("button[type='submit']");
+    form.addEventListener("submit", (event) => {
+      const button = event.submitter || form.querySelector("button[type='submit']");
       if (!button) {
         return;
       }
