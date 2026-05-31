@@ -144,7 +144,7 @@ async def item_new_form(request: Request):
 
 
 @app.post("/items/new")
-async def item_new_submit(
+async def create_item(
     request: Request,
     item_id: str = Form(...),
     item_name: str = Form(...),
@@ -231,7 +231,7 @@ async def item_edit_form(request: Request, item_id: str):
 
 
 @app.post("/items/{item_id}/edit")
-async def item_edit_submit(
+async def update_item(
     request: Request,
     item_id: str,
     item_name: str = Form(...),
@@ -301,7 +301,7 @@ async def item_delete_form(request: Request, item_id: str):
 
 
 @app.post("/items/{item_id}/delete")
-async def item_delete_submit(
+async def delete_item(
     request: Request,
     item_id: str,
     confirm_item_id: str = Form(...),
@@ -488,7 +488,7 @@ async def stock_adjust_form(request: Request, item_id: str = ""):
 
 
 @app.post("/stock-adjust")
-async def stock_adjust_submit(
+async def adjust_stock(
     request: Request,
     item_id: str = Form(...),
     actual_stock: str = Form(...),
