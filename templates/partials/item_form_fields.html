@@ -1,0 +1,20 @@
+<label for="item_name">品名 <span class="required-mark">必須</span></label>
+<input id="item_name" name="item_name" type="text" value="{{ item.item_name if item else form.item_name if form else '' }}" placeholder="例: ベアリング" autocomplete="off" required>
+
+<label for="model_number">型式</label>
+<input id="model_number" name="model_number" type="text" value="{{ item.model_number if item else form.model_number if form else '' }}" placeholder="例: ABC-123" autocomplete="off">
+
+<label for="maker">メーカー</label>
+<input id="maker" name="maker" type="text" value="{{ item.maker if item else form.maker if form else '' }}" placeholder="例: メーカーA" autocomplete="off">
+
+<label for="location">保管場所</label>
+<input id="location" name="location" type="text" value="{{ item.location if item else form.location if form else '' }}" placeholder="例: 棚A-01" autocomplete="off">
+
+<label for="unit">単位</label>
+<input id="unit" name="unit" type="text" value="{{ item.unit if item else form.unit if form else '' }}" placeholder="例: 個" autocomplete="off">
+
+<label for="min_stock">最低在庫数 <span class="required-mark">必須</span></label>
+<input id="min_stock" name="min_stock" type="number" min="0" step="1" inputmode="numeric" value="{{ item.min_stock if item else form.min_stock if form else '0' }}" placeholder="例: 2" required>
+
+<label for="note">備考</label>
+<textarea id="note" name="note" rows="3" placeholder="任意">{{ item.note if item else form.note if form else '' }}</textarea>

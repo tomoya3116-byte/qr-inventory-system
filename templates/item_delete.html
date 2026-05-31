@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}品目削除 | QR在庫管理 Web{% endblock %}
+{% block page_title %}品目削除{% endblock %}
+{% block content %}
+{% if message %}
+  <div class="message message--{{ message_type }}" role="alert">{{ message }}</div>
+{% endif %}
+
+{% if item %}
+<section class="section-card danger-zone">
+  <h2>削除確認</h2>
+  <p class="lead">削除すると品目マスタから取り除かれます。入出庫・棚卸履歴がある品目は削除できません。</p>
+  {% include "partials/item_card.html" %}
+  <form class="ios-form" method="post" action="/items/{{ item.item_id }}/delete">
+    <label for="confirm_item_id">確認のため品目IDを入力</label>
+    <input id="confirm_item_id" name="confirm_item_id" type="text" placeholder="{{ item.item_id }}" autocomplete="off" required>
+    <button type="submit" class="danger-button">削除する</button>
+  </form>
+</section>
+{% else %}
+<section class="section-card">
+  <p class="empty-message">削除対象はありません。</p>
+  <a class="primary-button" href="/items">品目一覧へ</a>
+</section>
+{% endif %}
+{% endblock %}
