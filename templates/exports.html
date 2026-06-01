@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}CSV出力 | QR在庫管理 Web{% endblock %}
+{% block page_title %}CSV出力{% endblock %}
+{% block content %}
+<section class="hero-card">
+  <p class="eyebrow">Web Phase 9</p>
+  <div class="section-heading section-heading--stacked">
+    <div>
+      <h2>CSVエクスポート・帳票出力</h2>
+      <p class="lead">品目マスタ、現在庫、入出庫履歴、最低在庫アラート、操作ログをExcelで開きやすいUTF-8 BOM付きCSVとしてダウンロードできます。</p>
+    </div>
+  </div>
+</section>
+
+<section class="section-card">
+  <div class="section-heading section-heading--stacked">
+    <div>
+      <h2>出力メニュー</h2>
+      <p>管理者ログイン中のみ利用できます。ファイル名には出力日時が自動で入ります。</p>
+    </div>
+  </div>
+
+  <div class="export-grid" aria-label="CSV出力メニュー">
+    {% for export in export_cards %}
+      <article class="export-card">
+        <div>
+          <p class="item-id">CSV</p>
+          <h3>{{ export.title }}</h3>
+          <p>{{ export.description }}</p>
+        </div>
+        <a class="primary-button export-card__button" href="/exports/{{ export.key }}.csv" download>CSVをダウンロード</a>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section-card subtle-card">
+  <h2>Excelで開く場合</h2>
+  <p class="note">各CSVは日本語が文字化けしにくいUTF-8 BOM付きで出力します。ダウンロード後、そのままExcelで開いて確認・保管・報告に利用できます。</p>
+</section>
+{% endblock %}
