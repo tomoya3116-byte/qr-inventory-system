@@ -193,6 +193,54 @@ def list_audit_logs(limit: int = 100, db_path: Path = DB_PATH) -> list[sqlite3.R
     return rows
 
 
+def list_transactions(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
+    """Return all stock-in/out/adjustment transactions ordered by newest first."""
+    with get_connection(db_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                transactions.transaction_id,
+                transactions.transaction_date,
+                transactions.item_id,
+                items.item_name,
+                items.model_number,
+                items.maker,
+                items.location,
+                items.unit,
+                transactions.transaction_type,
+                transactions.quantity,
+                transactions.stock_after,
+                transactions.operator,
+                transactions.note
+            FROM transactions
+            LEFT JOIN items ON items.item_id = transactions.item_id
+            ORDER BY transactions.transaction_date DESC, transactions.transaction_id DESC
+            """
+        ).fetchall()
+    return rows
+
+
+def list_audit_logs_for_export(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
+    """Return all audit logs ordered by newest first for CSV export."""
+    with get_connection(db_path) as connection:
+        _ensure_audit_log_table(connection)
+        rows = connection.execute(
+            """
+            SELECT
+                audit_log_id,
+                operation_date,
+                operation_type,
+                target_item_id,
+                target_item_name,
+                quantity,
+                message
+            FROM audit_logs
+            ORDER BY operation_date DESC, audit_log_id DESC
+            """
+        ).fetchall()
+    return rows
+
+
 def get_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
     """Create a SQLite connection with row factory enabled."""
     db_path.parent.mkdir(parents=True, exist_ok=True)

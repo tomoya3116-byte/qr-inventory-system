@@ -1,12 +1,14 @@
-"""FastAPI web application for QR inventory system Ver2.0 Phase 8."""
+"""FastAPI web application for QR inventory system Ver2.0 Phase 9."""
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+import csv
 from datetime import datetime
 import hashlib
 import hmac
+import io
 import os
 from pathlib import Path
 import secrets
@@ -14,7 +16,7 @@ from typing import Any
 from urllib.parse import quote
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -35,7 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="QR Inventory System Web",
     description="スマートフォン・PCブラウザ向け在庫管理Webアプリ",
-    version="2.0.0-phase8",
+    version="2.0.0-phase9",
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -53,6 +55,7 @@ NAV_ITEMS = [
     {"label": "品目登録", "url": "/items/new", "requires_admin": True},
     {"label": "棚卸修正", "url": "/stock-adjust", "requires_admin": True},
     {"label": "CSV取込", "url": "/csv-import", "requires_admin": True},
+    {"label": "CSV出力", "url": "/exports", "requires_admin": True},
     {"label": "QRコード", "url": "/qr-codes", "requires_admin": True},
     {"label": "ラベル印刷", "url": "/labels", "requires_admin": True},
     {"label": "DBバックアップ", "url": "/db-backup", "requires_admin": True},
@@ -67,6 +70,7 @@ ADMIN_PROTECTED_PREFIXES = (
     "/admin",
     "/stock-adjust",
     "/csv-import",
+    "/exports",
     "/qr-codes",
     "/labels",
     "/db-backup",
@@ -171,6 +175,112 @@ def _format_backup_rows() -> list[dict[str, object]]:
         )
     return rows
 
+
+EXPORT_DEFINITIONS = {
+    "items": {
+        "title": "品目マスタ",
+        "description": "品目ID、品名、型式、メーカー、保管場所、単位、最低在庫、現在庫、QRコード、備考を出力します。",
+        "filename_prefix": "item_master",
+        "headers": [
+            ("item_id", "品目ID"),
+            ("item_name", "品名"),
+            ("model_number", "型式"),
+            ("maker", "メーカー"),
+            ("location", "保管場所"),
+            ("unit", "単位"),
+            ("min_stock", "最低在庫"),
+            ("current_stock", "現在庫"),
+            ("qr_code", "QRコード"),
+            ("note", "備考"),
+        ],
+        "loader": database.list_items,
+    },
+    "inventory": {
+        "title": "現在庫一覧",
+        "description": "現在庫確認用に、品目情報と現在庫・最低在庫を出力します。",
+        "filename_prefix": "current_inventory",
+        "headers": [
+            ("item_id", "品目ID"),
+            ("item_name", "品名"),
+            ("model_number", "型式"),
+            ("maker", "メーカー"),
+            ("location", "保管場所"),
+            ("unit", "単位"),
+            ("current_stock", "現在庫"),
+            ("min_stock", "最低在庫"),
+        ],
+        "loader": database.list_items,
+    },
+    "transactions": {
+        "title": "入出庫履歴",
+        "description": "入庫・出庫・棚卸修正の履歴を、品目名などの参照情報付きで出力します。",
+        "filename_prefix": "stock_transactions",
+        "headers": [
+            ("transaction_id", "履歴ID"),
+            ("transaction_date", "処理日時"),
+            ("item_id", "品目ID"),
+            ("item_name", "品名"),
+            ("model_number", "型式"),
+            ("maker", "メーカー"),
+            ("location", "保管場所"),
+            ("unit", "単位"),
+            ("transaction_type", "処理種別"),
+            ("quantity", "数量"),
+            ("stock_after", "処理後在庫"),
+            ("operator", "作業者"),
+            ("note", "備考"),
+        ],
+        "loader": database.list_transactions,
+    },
+    "low-stock": {
+        "title": "最低在庫アラート",
+        "description": "現在庫が最低在庫以下の品目と不足数量を出力します。",
+        "filename_prefix": "low_stock_alerts",
+        "headers": [
+            ("item_id", "品目ID"),
+            ("item_name", "品名"),
+            ("model_number", "型式"),
+            ("maker", "メーカー"),
+            ("location", "保管場所"),
+            ("unit", "単位"),
+            ("min_stock", "最低在庫"),
+            ("current_stock", "現在庫"),
+            ("shortage_quantity", "不足数量"),
+        ],
+        "loader": database.list_low_stock_items,
+    },
+    "audit-logs": {
+        "title": "操作ログ",
+        "description": "管理操作や入出庫操作の監査ログを出力します。",
+        "filename_prefix": "audit_logs",
+        "headers": [
+            ("audit_log_id", "ログID"),
+            ("operation_date", "操作日時"),
+            ("operation_type", "操作種別"),
+            ("target_item_id", "対象品目ID"),
+            ("target_item_name", "対象品目名"),
+            ("quantity", "数量"),
+            ("message", "メッセージ"),
+        ],
+        "loader": database.list_audit_logs_for_export,
+    },
+}
+
+
+def _csv_download_filename(prefix: str) -> str:
+    """Return a timestamped CSV filename for downloads."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"{prefix}_{timestamp}.csv"
+
+
+def _build_csv_content(rows: list[Any], headers: list[tuple[str, str]]) -> bytes:
+    """Build UTF-8 BOM CSV bytes for Excel-friendly downloads."""
+    text_buffer = io.StringIO(newline="")
+    writer = csv.writer(text_buffer)
+    writer.writerow([label for _, label in headers])
+    for row in rows:
+        writer.writerow([row[key] if row[key] is not None else "" for key, _ in headers])
+    return text_buffer.getvalue().encode("utf-8-sig")
 
 
 def _record_audit_log(
@@ -1066,6 +1176,51 @@ async def db_restore_execute(
         ),
     )
 
+
+
+@app.get("/exports")
+async def exports(request: Request):
+    """Show administrator-only CSV export menu."""
+    export_cards = []
+    for export_key, definition in EXPORT_DEFINITIONS.items():
+        export_cards.append(
+            {
+                "key": export_key,
+                "title": definition["title"],
+                "description": definition["description"],
+            }
+        )
+    return templates.TemplateResponse(
+        request,
+        "exports.html",
+        _context(request, export_cards=export_cards),
+    )
+
+
+@app.get("/exports/{export_key}.csv")
+async def export_csv(request: Request, export_key: str):
+    """Download the selected CSV export with UTF-8 BOM for Excel."""
+    definition = EXPORT_DEFINITIONS.get(export_key)
+    if definition is None:
+        return RedirectResponse("/exports", status_code=303)
+
+    rows = definition["loader"]()
+    filename = _csv_download_filename(str(definition["filename_prefix"]))
+    csv_content = _build_csv_content(rows, definition["headers"])
+    _record_audit_log(
+        "CSV出力",
+        quantity=len(rows),
+        message=f"{definition['title']}CSVを出力しました。ファイル名: {filename}",
+    )
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Cache-Control": "no-store",
+    }
+    return StreamingResponse(
+        io.BytesIO(csv_content),
+        media_type="text/csv; charset=utf-8",
+        headers=headers,
+    )
 
 @app.get("/audit-logs")
 async def audit_logs(request: Request):

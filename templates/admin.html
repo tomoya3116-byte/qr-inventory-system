@@ -3,9 +3,9 @@
 {% block page_title %}管理者メニュー{% endblock %}
 {% block content %}
 <section class="hero-card admin-hero">
-  <p class="eyebrow">Web Phase 8</p>
+  <p class="eyebrow">Web Phase 9</p>
   <h2>品目マスタと棚卸を管理</h2>
-  <p>品目登録・編集・削除、棚卸修正、CSV取込、QRコード生成、ラベル印刷、DBバックアップ/復旧、操作ログ確認をまとめて実行できます。</p>
+  <p>品目登録・編集・削除、棚卸修正、CSV取込、CSV出力、QRコード生成、ラベル印刷、DBバックアップ/復旧、操作ログ確認をまとめて実行できます。</p>
 </section>
 
 <section class="stats-grid" aria-label="管理サマリー">
@@ -34,6 +34,7 @@
     <a class="menu-card" href="/stock-adjust"><span>🧮</span><strong>棚卸修正</strong><small>実在庫数に合わせて補正</small></a>
     <a class="menu-card" href="/low-stock"><span>⚠️</span><strong>最低在庫確認</strong><small>補充対象を確認</small></a>
     <a class="menu-card" href="/csv-import"><span>📥</span><strong>CSV取込</strong><small>CSVファイル選択画面</small></a>
+    <a class="menu-card" href="/exports"><span>📤</span><strong>CSV出力</strong><small>Excel向けCSVをダウンロード</small></a>
     <a class="menu-card" href="/qr-codes"><span>▦</span><strong>QRコード</strong><small>単品・全件のPNG生成</small></a>
     <a class="menu-card" href="/labels"><span>🏷️</span><strong>ラベル印刷</strong><small>印刷用HTMLを生成</small></a>
     <a class="menu-card" href="/db-backup"><span>💾</span><strong>DBバックアップ</strong><small>現在DBを保存</small></a>
