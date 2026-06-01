@@ -1,4 +1,4 @@
-"""FastAPI web application for QR inventory system Ver2.0 Phase 4."""
+"""FastAPI web application for QR inventory system Ver2.0 Phase 8."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="QR Inventory System Web",
     description="スマートフォン・PCブラウザ向け在庫管理Webアプリ",
-    version="2.0.0-phase4",
+    version="2.0.0-phase8",
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -57,6 +57,7 @@ NAV_ITEMS = [
     {"label": "ラベル印刷", "url": "/labels", "requires_admin": True},
     {"label": "DBバックアップ", "url": "/db-backup", "requires_admin": True},
     {"label": "DB復旧", "url": "/db-restore", "requires_admin": True},
+    {"label": "操作ログ", "url": "/audit-logs", "requires_admin": True},
 ]
 
 ADMIN_COOKIE_NAME = "qr_inventory_admin"
@@ -70,6 +71,7 @@ ADMIN_PROTECTED_PREFIXES = (
     "/labels",
     "/db-backup",
     "/db-restore",
+    "/audit-logs",
 )
 ADMIN_PROTECTED_ITEM_SUFFIXES = ("/edit", "/delete")
 
@@ -170,6 +172,34 @@ def _format_backup_rows() -> list[dict[str, object]]:
     return rows
 
 
+
+def _record_audit_log(
+    operation_type: str,
+    target_item_id: str | None = None,
+    target_item_name: str | None = None,
+    quantity: int | None = None,
+    message: str = "",
+) -> None:
+    """Record a Web operation in the database audit log."""
+    database.record_audit_log(
+        operation_type=operation_type,
+        target_item_id=target_item_id,
+        target_item_name=target_item_name,
+        quantity=quantity,
+        message=message,
+    )
+
+
+def _item_audit_fields(item: Any) -> dict[str, str | None]:
+    """Return common item identifiers for audit log recording."""
+    if item is None:
+        return {"target_item_id": None, "target_item_name": None}
+    return {
+        "target_item_id": item["item_id"],
+        "target_item_name": item["item_name"],
+    }
+
+
 def _parse_quantity(quantity_text: str, label: str) -> int:
     """Parse positive integer quantity from a form value."""
     try:
@@ -235,6 +265,7 @@ async def login_submit(
     """Authenticate administrator password and store login state in session."""
     next_url = _safe_next_url(next)
     if secrets.compare_digest(password, _get_admin_password()):
+        _record_audit_log("ログイン成功", message="管理者ログインに成功しました。")
         response = RedirectResponse(next_url, status_code=303)
         response.set_cookie(
             ADMIN_COOKIE_NAME,
@@ -244,6 +275,7 @@ async def login_submit(
         )
         return response
 
+    _record_audit_log("ログイン失敗", message="管理者ログインに失敗しました。")
     return templates.TemplateResponse(
         request,
         "login.html",
@@ -260,6 +292,8 @@ async def login_submit(
 @app.get("/logout")
 async def logout(request: Request):
     """Clear administrator login state."""
+    if _is_admin_logged_in(request):
+        _record_audit_log("ログアウト", message="管理者がログアウトしました。")
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(ADMIN_COOKIE_NAME)
     return response
@@ -364,6 +398,12 @@ async def create_item(
         )
         item = database.find_item_by_id(parsed_item_id)
         message = f"品目ID '{parsed_item_id}' を登録しました。"
+        _record_audit_log(
+            "品目登録",
+            **_item_audit_fields(item),
+            quantity=parsed_initial_stock,
+            message=message,
+        )
         form = {
             "item_id": "",
             "item_name": "",
@@ -438,6 +478,11 @@ async def update_item(
         )
         item = database.find_item_by_id(item["item_id"])
         message = "品目情報を更新しました。"
+        _record_audit_log(
+            "品目編集",
+            **_item_audit_fields(item),
+            message=message,
+        )
     except (LookupError, ValueError) as error:
         message = str(error)
         message_type = "error"
@@ -491,9 +536,16 @@ async def delete_item(
         if confirm_item_id.strip() != item["item_id"]:
             raise ValueError("確認入力が一致しないため、削除を中止しました。")
         deleted_item_id = item["item_id"]
+        deleted_item_name = item["item_name"]
         database.delete_item(deleted_item_id)
         item = None
         message = f"品目ID '{deleted_item_id}' を削除しました。"
+        _record_audit_log(
+            "品目削除",
+            target_item_id=deleted_item_id,
+            target_item_name=deleted_item_name,
+            message=message,
+        )
     except (LookupError, ValueError) as error:
         message = str(error)
         message_type = "error"
@@ -557,6 +609,12 @@ async def stock_in_submit(
         )
         item = database.find_item_by_id(normalized_item_id)
         message = f"入庫しました。現在庫は {stock_after} です。"
+        _record_audit_log(
+            "入庫",
+            **_item_audit_fields(item),
+            quantity=parsed_quantity,
+            message=message,
+        )
     except (LookupError, ValueError) as error:
         message = str(error)
         message_type = "error"
@@ -619,6 +677,12 @@ async def stock_out_submit(
         )
         item = database.find_item_by_id(normalized_item_id)
         message = f"出庫しました。現在庫は {stock_after} です。"
+        _record_audit_log(
+            "出庫",
+            **_item_audit_fields(item),
+            quantity=parsed_quantity,
+            message=message,
+        )
     except (LookupError, ValueError) as error:
         message = str(error)
         message_type = "error"
@@ -698,6 +762,12 @@ async def adjust_stock(
             f"棚卸修正を記録しました。現在庫は {stock_after} です。"
             f"差異は {difference} です。{backup_message}"
         )
+        _record_audit_log(
+            "棚卸修正",
+            **_item_audit_fields(item),
+            quantity=difference,
+            message=message,
+        )
     except (LookupError, ValueError) as error:
         message = str(error)
         message_type = "error"
@@ -747,6 +817,10 @@ async def csv_import_form(request: Request):
 @app.post("/csv-import")
 async def csv_import_preview_placeholder(request: Request):
     """Accept the CSV import form without importing data yet."""
+    _record_audit_log(
+        "CSV取込",
+        message="CSV取込フォームが送信されました（プレビュー準備中）。",
+    )
     return templates.TemplateResponse(
         request,
         "csv_import.html",
@@ -782,6 +856,11 @@ async def qr_code_single(request: Request, item_id: str = Form(...)):
             raise LookupError("品目が見つかりません")
         saved_path = qr_utils.generate_item_qr_code(item)
         message = "QRコードを生成しました。"
+        _record_audit_log(
+            "QRコード生成",
+            **_item_audit_fields(item),
+            message=f"{message} 保存先: {_format_path(saved_path)}",
+        )
     except (LookupError, ValueError) as error:
         message = str(error)
         message_type = "error"
@@ -811,6 +890,11 @@ async def qr_code_all(request: Request):
         items = database.list_items()
         result = qr_utils.generate_all_qr_codes(items)
         message = "全品目のQRコードを生成しました。"
+        _record_audit_log(
+            "QRコード生成",
+            quantity=len(items),
+            message=f"{message} 生成件数: {len(items)}件",
+        )
     except ValueError as error:
         message = str(error)
         message_type = "error"
@@ -859,6 +943,11 @@ async def labels_generate(request: Request):
             items, label_utils.LABEL_DIR / f"qr_labels_{timestamp}.html"
         )
         message = "QRラベル印刷用HTMLを生成しました。"
+        _record_audit_log(
+            "ラベル印刷",
+            quantity=len(items),
+            message=f"{message} 保存先: {_format_path(saved_path)}",
+        )
     except ValueError as error:
         message = str(error)
         message_type = "error"
@@ -896,6 +985,10 @@ async def db_backup_create(request: Request):
     try:
         backup_path = database.backup_database()
         message = "DBバックアップを作成しました。"
+        _record_audit_log(
+            "DBバックアップ",
+            message=f"{message} 保存先: {_format_path(backup_path)}",
+        )
     except (FileNotFoundError, ValueError) as error:
         message = str(error)
         message_type = "error"
@@ -944,7 +1037,15 @@ async def db_restore_execute(
         if selected is None:
             raise ValueError("選択したバックアップが見つかりません。")
         restore_result = database.restore_database_from_backup(selected["path"])
+        database.initialize_database()
         message = "DBを復旧しました。"
+        _record_audit_log(
+            "DB復旧",
+            message=(
+                f"{message} 復旧元: {_format_path(restore_result['source_path'])}, "
+                f"復旧前バックアップ: {_format_path(restore_result['before_restore_path'])}"
+            ),
+        )
     except (FileNotFoundError, ValueError) as error:
         message = str(error)
         message_type = "error"
@@ -963,4 +1064,14 @@ async def db_restore_execute(
             ),
             backups=_format_backup_rows(),
         ),
+    )
+
+
+@app.get("/audit-logs")
+async def audit_logs(request: Request):
+    """Show recent operation and audit logs for administrators."""
+    return templates.TemplateResponse(
+        request,
+        "audit_logs.html",
+        _context(request, audit_logs=database.list_audit_logs(limit=100)),
     )

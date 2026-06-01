@@ -3,9 +3,9 @@
 {% block page_title %}管理者メニュー{% endblock %}
 {% block content %}
 <section class="hero-card admin-hero">
-  <p class="eyebrow">Web Phase 4</p>
+  <p class="eyebrow">Web Phase 8</p>
   <h2>品目マスタと棚卸を管理</h2>
-  <p>品目登録・編集・削除、棚卸修正、CSV取込、QRコード生成、ラベル印刷、DBバックアップ/復旧をまとめて実行できます。</p>
+  <p>品目登録・編集・削除、棚卸修正、CSV取込、QRコード生成、ラベル印刷、DBバックアップ/復旧、操作ログ確認をまとめて実行できます。</p>
 </section>
 
 <section class="stats-grid" aria-label="管理サマリー">
@@ -38,6 +38,7 @@
     <a class="menu-card" href="/labels"><span>🏷️</span><strong>ラベル印刷</strong><small>印刷用HTMLを生成</small></a>
     <a class="menu-card" href="/db-backup"><span>💾</span><strong>DBバックアップ</strong><small>現在DBを保存</small></a>
     <a class="menu-card" href="/db-restore"><span>♻️</span><strong>DB復旧</strong><small>RESTORE確認後に復旧</small></a>
+    <a class="menu-card" href="/audit-logs"><span>📋</span><strong>操作ログ</strong><small>重要操作を新しい順に確認</small></a>
   </div>
 </section>
 {% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}操作ログ | QR在庫管理 Web{% endblock %}
+{% block page_title %}操作ログ{% endblock %}
+{% block content %}
+<section class="hero-card">
+  <p class="eyebrow">Web Phase 8</p>
+  <div class="section-heading section-heading--stacked">
+    <div>
+      <h2>操作ログ・監査ログ</h2>
+      <p class="lead">入出庫、棚卸修正、品目マスタ操作、CSV取込、QRコード生成、ラベル印刷、DB操作、ログイン/ログアウトを新しい順に最大100件表示します。</p>
+    </div>
+  </div>
+</section>
+
+<section class="section-card">
+  <div class="section-heading section-heading--stacked">
+    <div>
+      <h2>最新ログ</h2>
+      <p>{{ audit_logs|length }} 件を表示中</p>
+    </div>
+  </div>
+
+  {% if audit_logs %}
+    <div class="audit-log-list" aria-label="操作ログ一覧">
+      {% for log in audit_logs %}
+        <article class="audit-log-card">
+          <div class="audit-log-card__top">
+            <div>
+              <p class="item-id">{{ log.operation_date }}</p>
+              <h3>{{ log.operation_type }}</h3>
+            </div>
+            {% if log.quantity is not none %}
+              <span class="stock-pill">数量 {{ log.quantity }}</span>
+            {% endif %}
+          </div>
+          <dl class="item-meta audit-log-meta">
+            <div>
+              <dt>対象品目ID</dt>
+              <dd>{{ log.target_item_id or "-" }}</dd>
+            </div>
+            <div>
+              <dt>対象品目名</dt>
+              <dd>{{ log.target_item_name or "-" }}</dd>
+            </div>
+            <div class="audit-log-meta__message">
+              <dt>メッセージ</dt>
+              <dd>{{ log.message or "-" }}</dd>
+            </div>
+          </dl>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty-message">操作ログはまだありません。</p>
+  {% endif %}
+</section>
+{% endblock %}

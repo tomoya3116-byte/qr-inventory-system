@@ -22,3 +22,16 @@ CREATE TABLE IF NOT EXISTS transactions (
     note TEXT,
     FOREIGN KEY (item_id) REFERENCES items(item_id)
 );
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    audit_log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_date TEXT DEFAULT CURRENT_TIMESTAMP,
+    operation_type TEXT NOT NULL,
+    target_item_id TEXT,
+    target_item_name TEXT,
+    quantity INTEGER,
+    message TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_operation_date
+ON audit_logs (operation_date DESC, audit_log_id DESC);
