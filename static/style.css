@@ -332,6 +332,12 @@ body {
   color: var(--success-text);
 }
 
+.message--info {
+  border-color: #b8d7ff;
+  background: #eef6ff;
+  color: var(--primary-dark);
+}
+
 .message--error {
   border-color: #ffd0cc;
   background: var(--error-bg);

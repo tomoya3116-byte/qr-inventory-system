@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, Form, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -17,7 +17,6 @@ from src import database, label_utils, qr_utils
 ROOT_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = ROOT_DIR / "templates"
 STATIC_DIR = ROOT_DIR / "static"
-UPLOAD_DIR = ROOT_DIR / "data" / "web_uploads"
 
 
 @asynccontextmanager
@@ -85,34 +84,6 @@ def _format_backup_rows() -> list[dict[str, object]]:
             }
         )
     return rows
-
-
-def _resolve_uploaded_csv(upload_path: str) -> Path:
-    """Validate that an import confirmation refers to a saved Web upload."""
-    path = Path(upload_path)
-    if not path.is_absolute():
-        path = ROOT_DIR / path
-    resolved = path.resolve()
-    upload_root = UPLOAD_DIR.resolve()
-    if upload_root != resolved and upload_root not in resolved.parents:
-        raise ValueError("CSV取込用にアップロードされたファイルを指定してください。")
-    if not resolved.exists() or not resolved.is_file():
-        raise ValueError("プレビュー済みCSVファイルが見つかりません。再アップロードしてください。")
-    return resolved
-
-
-def _save_uploaded_csv(upload_file: UploadFile, content: bytes) -> Path:
-    """Save an uploaded CSV for preview/confirmed import."""
-    if not upload_file.filename:
-        raise ValueError("CSVファイルを選択してください。")
-    if not content:
-        raise ValueError("CSVファイルが空です。")
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    safe_name = Path(upload_file.filename).name.replace(" ", "_")
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    upload_path = UPLOAD_DIR / f"{timestamp}_{safe_name}"
-    upload_path.write_bytes(content)
-    return upload_path
 
 
 def _parse_quantity(quantity_text: str, label: str) -> int:
@@ -624,7 +595,7 @@ async def low_stock(request: Request):
 
 @app.get("/csv-import")
 async def csv_import_form(request: Request):
-    """Show CSV item master import preview form."""
+    """Show the CSV import placeholder form."""
     return templates.TemplateResponse(
         request,
         "csv_import.html",
@@ -632,74 +603,18 @@ async def csv_import_form(request: Request):
     )
 
 
-@app.post("/csv-import/preview")
-async def csv_import_preview(request: Request, csv_file: UploadFile = File(...)):
-    """Preview an uploaded item master CSV without changing the database."""
-    message = ""
-    message_type = "success"
-    preview = None
-    upload_path = None
-
-    try:
-        upload_path = _save_uploaded_csv(csv_file, await csv_file.read())
-        preview = database.preview_import_items_from_csv(str(upload_path))
-        if preview["error_count"]:
-            message = "CSVにエラーがあります。修正後に再アップロードしてください。"
-            message_type = "error"
-        else:
-            message = "CSV取込プレビューが完了しました。内容を確認して取込を実行できます。"
-    except ValueError as error:
-        message = str(error)
-        message_type = "error"
-
+@app.post("/csv-import")
+async def csv_import_preview_placeholder(request: Request):
+    """Accept the CSV import form without importing data yet."""
     return templates.TemplateResponse(
         request,
         "csv_import.html",
         _context(
             request,
-            message=message,
-            message_type=message_type,
-            preview=preview,
-            upload_path=_format_path(upload_path) if upload_path else "",
+            message="CSV取込機能は準備中です。今回はファイル選択フォームのみ利用できます。",
+            message_type="info",
         ),
     )
-
-
-@app.post("/csv-import/execute")
-async def csv_import_execute(request: Request, upload_path: str = Form(...)):
-    """Import a previously previewed CSV when it has no validation errors."""
-    message = ""
-    message_type = "success"
-    preview = None
-    result = None
-    backup_path = None
-
-    try:
-        csv_path = _resolve_uploaded_csv(upload_path)
-        preview = database.preview_import_items_from_csv(str(csv_path))
-        if preview["error_count"]:
-            raise ValueError("CSVにエラーがあるため取込できません。プレビュー結果を確認してください。")
-        backup_path = database.create_auto_backup("csv_import")
-        result = database.import_items_from_csv(str(csv_path))
-        message = "CSV品目マスタを取り込みました。"
-    except ValueError as error:
-        message = str(error)
-        message_type = "error"
-
-    return templates.TemplateResponse(
-        request,
-        "csv_import.html",
-        _context(
-            request,
-            message=message,
-            message_type=message_type,
-            preview=preview,
-            result=result,
-            backup_path=_format_path(backup_path) if backup_path else "",
-            upload_path=upload_path,
-        ),
-    )
-
 
 @app.get("/qr-codes")
 async def qr_codes_form(request: Request):
