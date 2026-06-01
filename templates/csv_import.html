@@ -1,135 +1,41 @@
 {% extends "base.html" %}
 {% block title %}CSV取込 | QR在庫管理 Web{% endblock %}
 {% block page_title %}CSV取込{% endblock %}
+{% block page_subtitle %}CSVファイルを選択してプレビューへ進む準備画面です{% endblock %}
+
 {% block content %}
-{% if message %}<div class="message message--{{ message_type }}">{{ message }}</div>{% endif %}
-<section class="section-card">
-  <div class="section-heading section-heading--stacked">
+<section class="hero-card">
+  <p class="eyebrow">Web Phase 3-A-1</p>
+  <div class="section-heading">
     <div>
-      <h2>CSV品目マスタ取込</h2>
-      <p>utf-8-sig / utf-8 / cp932 / shift_jis のCSVをプレビューしてから取り込みます。</p>
+      <h2>CSV取込</h2>
+      <p class="lead">CSV取込機能は準備中です。今回はファイル選択フォームのみ表示します。</p>
     </div>
   </div>
   <div class="csv-guide" aria-label="CSV取込ガイド">
     <div>
       <strong>1. CSVを選択</strong>
-      <span>対応文字コード: utf-8-sig / utf-8 / cp932 / shift_jis</span>
+      <span>品目マスタCSVを端末から選びます。</span>
     </div>
     <div>
-      <strong>2. プレビュー確認</strong>
-      <span>登録予定・更新予定・エラーを取込前に確認します。</span>
-    </div>
-    <div>
-      <strong>3. 取込実行</strong>
-      <span>エラーがない場合のみ、自動バックアップ後に取り込みます。</span>
+      <strong>2. プレビュー</strong>
+      <span>次フェーズで取込前の内容確認を追加します。</span>
     </div>
   </div>
-  <form class="ios-form" action="/csv-import/preview" method="post" enctype="multipart/form-data">
-    <label for="csv_file">CSVファイル <span class="required-mark">必須</span></label>
-    <input id="csv_file" name="csv_file" type="file" accept=".csv,text/csv" required>
-    <p class="note csv-column-note">必須ヘッダー: item_id, item_name, model_number, maker, location, unit, min_stock, current_stock, qr_code, note</p>
+</section>
+
+{% if message %}
+  <div class="message message--{{ message_type|default('info') }}" role="status">{{ message }}</div>
+{% endif %}
+
+<section class="section-card">
+  <h2>CSVファイル選択</h2>
+  <p class="note">この画面ではまだDB取込処理は実行しません。CSVファイルを選択して「プレビュー」を押すと準備中メッセージを表示します。</p>
+  <form class="ios-form" action="/csv-import" method="post" enctype="multipart/form-data">
+    <label for="csv_file">CSVファイル</label>
+    <input id="csv_file" name="csv_file" type="file" accept=".csv,text/csv">
+    <p class="note csv-column-note">対応予定形式: .csv / text/csv</p>
     <button class="primary-button" type="submit">プレビュー</button>
   </form>
 </section>
-
-{% if preview %}
-<section class="section-card">
-  <h2>取込前プレビュー</h2>
-  <div class="summary-grid">
-    <div><span>使用文字コード</span><strong>{{ preview.encoding }}</strong></div>
-    <div><span>登録予定件数</span><strong>{{ preview.registered_count }}</strong></div>
-    <div><span>更新予定件数</span><strong>{{ preview.updated_count }}</strong></div>
-    <div class="{% if preview.error_count %}summary-alert{% endif %}"><span>エラー件数</span><strong>{{ preview.error_count }}</strong></div>
-  </div>
-  {% if preview.rows %}
-    <h3>CSV内容プレビュー</h3>
-    <p class="note">各行が「登録」「更新」「エラー」のどれとして処理されるかを確認できます。</p>
-    <div class="csv-preview-cards" aria-label="CSV内容プレビュー（スマホ表示）">
-      {% for row in preview.rows %}
-      <article class="csv-preview-card csv-preview-card--{{ row.action }}">
-        <div class="csv-preview-card__top">
-          <span>{{ row.row_index }}行目</span>
-          <strong>
-            {% if row.action == "insert" %}登録
-            {% elif row.action == "update" %}更新
-            {% else %}エラー
-            {% endif %}
-          </strong>
-        </div>
-        <dl class="csv-preview-card__details">
-          <div><dt>品目ID</dt><dd>{{ row.item_id or '-' }}</dd></div>
-          <div><dt>品名</dt><dd>{{ row.item_name or '-' }}</dd></div>
-          <div><dt>型式</dt><dd>{{ row.model_number or '-' }}</dd></div>
-          <div><dt>保管場所</dt><dd>{{ row.location or '-' }}</dd></div>
-          <div><dt>現在庫</dt><dd>{{ row.current_stock if row.current_stock is not none else '-' }}</dd></div>
-          <div><dt>エラー</dt><dd>{% if row.errors %}{{ row.errors | join(" / ") }}{% else %}-{% endif %}</dd></div>
-        </dl>
-      </article>
-      {% endfor %}
-    </div>
-    <div class="responsive-table csv-preview-table" role="region" aria-label="CSV内容プレビュー（表形式）" tabindex="0">
-      <table>
-        <thead>
-          <tr>
-            <th>行</th>
-            <th>処理</th>
-            <th>品目ID</th>
-            <th>品名</th>
-            <th>型式</th>
-            <th>保管場所</th>
-            <th>現在庫</th>
-            <th>エラー</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in preview.rows %}
-          <tr class="preview-row--{{ row.action }}">
-            <td>{{ row.row_index }}</td>
-            <td>
-              {% if row.action == "insert" %}登録
-              {% elif row.action == "update" %}更新
-              {% else %}エラー
-              {% endif %}
-            </td>
-            <td>{{ row.item_id }}</td>
-            <td>{{ row.item_name }}</td>
-            <td>{{ row.model_number }}</td>
-            <td>{{ row.location }}</td>
-            <td>{{ row.current_stock if row.current_stock is not none else '-' }}</td>
-            <td>{% if row.errors %}{{ row.errors | join(" / ") }}{% else %}-{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% endif %}
-  {% if preview.errors %}
-    <div class="error-list" role="alert">
-      <strong>エラー詳細</strong>
-      <ul>
-        {% for error in preview.errors %}<li>{{ error }}</li>{% endfor %}
-      </ul>
-    </div>
-  {% else %}
-    <p class="note">エラーはありません。取込実行前に自動バックアップを作成します。</p>
-    <form class="ios-form csv-execute-form" action="/csv-import/execute" method="post">
-      <input type="hidden" name="upload_path" value="{{ upload_path }}">
-      <button class="primary-button" type="submit">この内容で取込実行</button>
-    </form>
-  {% endif %}
-</section>
-{% endif %}
-
-{% if result %}
-<section class="section-card">
-  <h2>取込結果</h2>
-  <div class="summary-grid">
-    <div><span>使用文字コード</span><strong>{{ result.encoding }}</strong></div>
-    <div><span>登録件数</span><strong>{{ result.registered_count }}</strong></div>
-    <div><span>更新件数</span><strong>{{ result.updated_count }}</strong></div>
-    <div><span>エラー件数</span><strong>{{ result.error_count }}</strong></div>
-  </div>
-  {% if backup_path %}<p class="path-box">自動バックアップ: {{ backup_path }}</p>{% endif %}
-</section>
-{% endif %}
 {% endblock %}
