@@ -618,3 +618,113 @@ body {
   background: var(--error-bg);
   color: var(--error-text);
 }
+
+.csv-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.csv-guide div {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #f8f9fd;
+}
+
+.csv-guide strong,
+.csv-guide span {
+  display: block;
+}
+
+.csv-guide span,
+.csv-column-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.csv-preview-cards {
+  display: none;
+}
+
+.csv-preview-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.csv-preview-card--error {
+  border-color: #ffd0cc;
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.csv-preview-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.csv-preview-card__top span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.csv-preview-card--insert .csv-preview-card__top strong {
+  color: var(--success-text);
+}
+
+.csv-preview-card--update .csv-preview-card__top strong {
+  color: var(--primary-dark);
+}
+
+.csv-preview-card--error .csv-preview-card__top span,
+.csv-preview-card--error .csv-preview-card__top strong {
+  color: var(--error-text);
+}
+
+.csv-preview-card__details {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.csv-preview-card__details div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.csv-preview-card__details dt {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.csv-preview-card__details dd {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.csv-execute-form .primary-button {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .csv-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .csv-preview-cards {
+    display: grid;
+    gap: 10px;
+  }
+
+  .csv-preview-table {
+    display: none;
+  }
+}
