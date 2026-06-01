@@ -10,9 +10,24 @@
       <p>utf-8-sig / utf-8 / cp932 / shift_jis のCSVをプレビューしてから取り込みます。</p>
     </div>
   </div>
+  <div class="csv-guide" aria-label="CSV取込ガイド">
+    <div>
+      <strong>1. CSVを選択</strong>
+      <span>対応文字コード: utf-8-sig / utf-8 / cp932 / shift_jis</span>
+    </div>
+    <div>
+      <strong>2. プレビュー確認</strong>
+      <span>登録予定・更新予定・エラーを取込前に確認します。</span>
+    </div>
+    <div>
+      <strong>3. 取込実行</strong>
+      <span>エラーがない場合のみ、自動バックアップ後に取り込みます。</span>
+    </div>
+  </div>
   <form class="ios-form" action="/csv-import/preview" method="post" enctype="multipart/form-data">
     <label for="csv_file">CSVファイル <span class="required-mark">必須</span></label>
     <input id="csv_file" name="csv_file" type="file" accept=".csv,text/csv" required>
+    <p class="note csv-column-note">必須ヘッダー: item_id, item_name, model_number, maker, location, unit, min_stock, current_stock, qr_code, note</p>
     <button class="primary-button" type="submit">プレビュー</button>
   </form>
 </section>
@@ -29,7 +44,30 @@
   {% if preview.rows %}
     <h3>CSV内容プレビュー</h3>
     <p class="note">各行が「登録」「更新」「エラー」のどれとして処理されるかを確認できます。</p>
-    <div class="responsive-table" role="region" aria-label="CSV内容プレビュー" tabindex="0">
+    <div class="csv-preview-cards" aria-label="CSV内容プレビュー（スマホ表示）">
+      {% for row in preview.rows %}
+      <article class="csv-preview-card csv-preview-card--{{ row.action }}">
+        <div class="csv-preview-card__top">
+          <span>{{ row.row_index }}行目</span>
+          <strong>
+            {% if row.action == "insert" %}登録
+            {% elif row.action == "update" %}更新
+            {% else %}エラー
+            {% endif %}
+          </strong>
+        </div>
+        <dl class="csv-preview-card__details">
+          <div><dt>品目ID</dt><dd>{{ row.item_id or '-' }}</dd></div>
+          <div><dt>品名</dt><dd>{{ row.item_name or '-' }}</dd></div>
+          <div><dt>型式</dt><dd>{{ row.model_number or '-' }}</dd></div>
+          <div><dt>保管場所</dt><dd>{{ row.location or '-' }}</dd></div>
+          <div><dt>現在庫</dt><dd>{{ row.current_stock if row.current_stock is not none else '-' }}</dd></div>
+          <div><dt>エラー</dt><dd>{% if row.errors %}{{ row.errors | join(" / ") }}{% else %}-{% endif %}</dd></div>
+        </dl>
+      </article>
+      {% endfor %}
+    </div>
+    <div class="responsive-table csv-preview-table" role="region" aria-label="CSV内容プレビュー（表形式）" tabindex="0">
       <table>
         <thead>
           <tr>
@@ -57,7 +95,7 @@
             <td>{{ row.item_name }}</td>
             <td>{{ row.model_number }}</td>
             <td>{{ row.location }}</td>
-            <td>{{ row.current_stock }}</td>
+            <td>{{ row.current_stock if row.current_stock is not none else '-' }}</td>
             <td>{% if row.errors %}{{ row.errors | join(" / ") }}{% else %}-{% endif %}</td>
           </tr>
           {% endfor %}
@@ -74,7 +112,7 @@
     </div>
   {% else %}
     <p class="note">エラーはありません。取込実行前に自動バックアップを作成します。</p>
-    <form class="ios-form" action="/csv-import/execute" method="post">
+    <form class="ios-form csv-execute-form" action="/csv-import/execute" method="post">
       <input type="hidden" name="upload_path" value="{{ upload_path }}">
       <button class="primary-button" type="submit">この内容で取込実行</button>
     </form>
