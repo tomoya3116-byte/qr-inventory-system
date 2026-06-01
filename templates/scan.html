@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}QRスキャン | QR在庫管理 Web{% endblock %}
+{% block page_title %}QRスキャン{% endblock %}
+{% block content %}
+<section class="section-card scan-hero">
+  <p class="eyebrow">QR Scan</p>
+  <h2>読み取った品目を確認</h2>
+  <p class="lead">QRコードから開いた品目の在庫確認と入出庫操作にすぐ進めます。</p>
+</section>
+
+{% if item %}
+<section class="section-card scan-item-summary">
+  <div class="item-card__top">
+    <div>
+      <p class="item-id">{{ item.item_id }}</p>
+      <h2>{{ item.item_name }}</h2>
+    </div>
+    <div class="stock-pill {% if item.current_stock <= item.min_stock %}stock-pill--alert{% endif %}">
+      現在庫 {{ item.current_stock }} {{ item.unit }}
+    </div>
+  </div>
+
+  <dl class="scan-meta-grid" aria-label="読み取り品目情報">
+    <div><dt>現在庫</dt><dd>{{ item.current_stock }} {{ item.unit }}</dd></div>
+    <div><dt>最低在庫</dt><dd>{{ item.min_stock }} {{ item.unit }}</dd></div>
+    <div><dt>保管場所</dt><dd>{{ item.location or '—' }}</dd></div>
+    <div><dt>メーカー</dt><dd>{{ item.maker or '—' }}</dd></div>
+    <div><dt>型式</dt><dd>{{ item.model_number or '—' }}</dd></div>
+  </dl>
+
+  {% if item.current_stock <= item.min_stock %}
+    <div class="message message--error scan-alert" role="alert">現在庫が最低在庫以下です。補充状況を確認してください。</div>
+  {% endif %}
+</section>
+
+<section class="section-card scan-actions" aria-label="QRスキャン後の操作">
+  <h2>次の操作</h2>
+  <a class="primary-button scan-action-button" href="{{ stock_in_url }}">入庫する</a>
+  <a class="danger-button scan-action-button" href="{{ stock_out_url }}">出庫する</a>
+  <a class="secondary-button scan-action-button" href="{{ item_detail_url }}">品目詳細を見る</a>
+</section>
+{% else %}
+<div class="message message--error" role="alert">
+  {{ message }} QRコードの内容が <code>/scan/ITEM-0001</code> 形式か、品目IDが登録済みか確認してください。
+</div>
+<section class="section-card">
+  <h2>再確認のヒント</h2>
+  <p class="lead">読み取り値: <strong>{{ scanned_item_id or '（空）' }}</strong></p>
+  <div class="action-row action-row--wrap">
+    <a class="secondary-button" href="/items">品目一覧へ戻る</a>
+    <a class="secondary-button" href="/search?q={{ scanned_item_id }}">品目検索で確認する</a>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

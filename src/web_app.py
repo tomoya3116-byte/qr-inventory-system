@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="QR Inventory System Web",
     description="スマートフォン・PCブラウザ向け在庫管理Webアプリ",
-    version="2.0.0-phase10",
+    version="2.0.0-phase11",
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -428,6 +428,24 @@ def _item_search_context(request: Request) -> dict[str, object]:
     }
 
 
+def _item_id_query_url(path: str, item_id: str) -> str:
+    """Return a URL that passes the item ID as an encoded query parameter."""
+    return f"{path}?item_id={quote(item_id, safe='')}"
+
+
+def _stock_form_context(item_id: str) -> dict[str, object]:
+    """Build GET context for stock forms opened from QR scan or item cards."""
+    normalized_item_id = item_id.strip()
+    item = database.find_item_by_id(normalized_item_id) if normalized_item_id else None
+    display_item_id = item["item_id"] if item is not None else normalized_item_id
+    return {
+        "item": item,
+        "message": "品目が見つかりません" if normalized_item_id and item is None else "",
+        "message_type": "error",
+        "form": {"item_id": display_item_id},
+    }
+
+
 @app.middleware("http")
 async def admin_lock_middleware(request: Request, call_next):
     """Require administrator login before serving protected Web pages."""
@@ -502,6 +520,30 @@ async def index(request: Request):
             item_count=len(items),
             low_stock_count=len(low_stock_items),
         ),
+    )
+
+
+@app.get("/scan/{item_id}")
+async def scan_item(request: Request, item_id: str):
+    """Show a mobile-first action screen opened from an item QR code."""
+    normalized_item_id = item_id.strip()
+    item = database.get_item_for_scan(normalized_item_id)
+    message = "" if item is not None else f"品目ID '{normalized_item_id}' は登録されていません。"
+    canonical_item_id = item["item_id"] if item is not None else normalized_item_id
+    return templates.TemplateResponse(
+        request,
+        "scan.html",
+        _context(
+            request,
+            item=item,
+            scanned_item_id=normalized_item_id,
+            message=message,
+            message_type="error",
+            stock_in_url=_item_id_query_url("/stock-in", canonical_item_id),
+            stock_out_url=_item_id_query_url("/stock-out", canonical_item_id),
+            item_detail_url=f"/items/{quote(canonical_item_id, safe='')}",
+        ),
+        status_code=404 if item is None else 200,
     )
 
 
@@ -747,6 +789,29 @@ async def delete_item(
     )
 
 
+@app.get("/items/{item_id}")
+async def item_detail(request: Request, item_id: str):
+    """Show a read-only item detail page."""
+    normalized_item_id = item_id.strip()
+    item = database.find_item_by_id(normalized_item_id)
+    message = "" if item is not None else "品目が見つかりません"
+    canonical_item_id = item["item_id"] if item is not None else normalized_item_id
+    return templates.TemplateResponse(
+        request,
+        "item_detail.html",
+        _context(
+            request,
+            item=item,
+            message=message,
+            message_type="error",
+            stock_in_url=_item_id_query_url("/stock-in", canonical_item_id),
+            stock_out_url=_item_id_query_url("/stock-out", canonical_item_id),
+            scan_url=f"/scan/{quote(canonical_item_id, safe='')}",
+        ),
+        status_code=404 if item is None else 200,
+    )
+
+
 @app.get("/search")
 async def search(request: Request):
     """Search items by keyword and filters."""
@@ -779,12 +844,12 @@ async def search(request: Request):
 
 
 @app.get("/stock-in")
-async def stock_in_form(request: Request):
-    """Show stock-in form."""
+async def stock_in_form(request: Request, item_id: str = ""):
+    """Show stock-in form, optionally prefilled from a QR scan."""
     return templates.TemplateResponse(
         request,
         "stock_in.html",
-        _context(request),
+        _context(request, **_stock_form_context(item_id)),
     )
 
 
@@ -847,12 +912,12 @@ async def stock_in_submit(
 
 
 @app.get("/stock-out")
-async def stock_out_form(request: Request):
-    """Show stock-out form."""
+async def stock_out_form(request: Request, item_id: str = ""):
+    """Show stock-out form, optionally prefilled from a QR scan."""
     return templates.TemplateResponse(
         request,
         "stock_out.html",
-        _context(request),
+        _context(request, **_stock_form_context(item_id)),
     )
 
 
@@ -1062,7 +1127,7 @@ async def qr_code_single(request: Request, item_id: str = Form(...)):
         item = database.find_item_by_id(normalized_item_id)
         if item is None:
             raise LookupError("品目が見つかりません")
-        saved_path = qr_utils.generate_item_qr_code(item)
+        saved_path = qr_utils.generate_item_qr_code(item, base_url=str(request.base_url))
         message = "QRコードを生成しました。"
         _record_audit_log(
             "QRコード生成",
@@ -1096,7 +1161,7 @@ async def qr_code_all(request: Request):
 
     try:
         items = database.list_items()
-        result = qr_utils.generate_all_qr_codes(items)
+        result = qr_utils.generate_all_qr_codes(items, base_url=str(request.base_url))
         message = "全品目のQRコードを生成しました。"
         _record_audit_log(
             "QRコード生成",
