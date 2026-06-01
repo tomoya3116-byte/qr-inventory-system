@@ -10,14 +10,28 @@
 <body>
   <header class="app-header">
     <div>
-      <p class="eyebrow">Ver2.0 Web Phase 3</p>
+      <p class="eyebrow">Ver2.0 Web Phase 4</p>
       <h1>{% block page_title %}QR在庫管理{% endblock %}</h1>
+    </div>
+    <div class="auth-status" aria-label="管理者ログイン状態">
+      {% if is_admin_logged_in %}
+        <span class="auth-status__badge">管理者ログイン中</span>
+        <a class="auth-status__link" href="/logout">ログアウト</a>
+      {% else %}
+        <span class="auth-status__badge auth-status__badge--locked">管理者未ログイン</span>
+        <a class="auth-status__link" href="/login">ログイン</a>
+      {% endif %}
     </div>
   </header>
 
   <nav class="bottom-nav" aria-label="主要メニュー">
     {% for nav in nav_items %}
-      <a href="{{ nav.url }}" class="bottom-nav__link">{{ nav.label }}</a>
+      <a href="{{ nav.url }}" class="bottom-nav__link {% if nav.requires_admin and not is_admin_logged_in %}bottom-nav__link--locked{% endif %}">
+        {{ nav.label }}
+        {% if nav.requires_admin and not is_admin_logged_in %}
+          <span class="nav-lock" aria-label="管理者ロック">🔒</span>
+        {% endif %}
+      </a>
     {% endfor %}
   </nav>
 

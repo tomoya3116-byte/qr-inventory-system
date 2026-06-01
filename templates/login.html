@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}管理者ログイン | QR在庫管理 Web{% endblock %}
+{% block page_title %}管理者ログイン{% endblock %}
+{% block content %}
+<section class="hero-card login-hero">
+  <p class="eyebrow">Web Phase 4</p>
+  <h2>管理者機能をロックしています</h2>
+  <p>品目登録・編集・削除、棚卸修正、CSV取込、QRコード生成、ラベル印刷、DBバックアップ/復旧は管理者ログイン後に利用できます。</p>
+</section>
+
+<section class="section-card login-card">
+  <h2>ログイン</h2>
+  <p class="lead">管理者パスワードを入力してください。未設定時の初期パスワードは <code>admin123</code> です。</p>
+  <form class="ios-form" method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label for="password">管理者パスワード <span class="required-mark">必須</span></label>
+    <input id="password" name="password" type="password" autocomplete="current-password" placeholder="管理者パスワード" required autofocus>
+    <button type="submit" class="primary-button">ログインする</button>
+  </form>
+</section>
+
+{% if message %}
+  <div class="message message--{{ message_type }}" role="alert">{{ message }}</div>
+{% endif %}
+{% endblock %}

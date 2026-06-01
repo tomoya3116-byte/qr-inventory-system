@@ -1,14 +1,20 @@
-"""FastAPI web application for QR inventory system Ver2.0 Phase 3."""
+"""FastAPI web application for QR inventory system Ver2.0 Phase 4."""
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
+import hashlib
+import hmac
+import os
 from pathlib import Path
+import secrets
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import FastAPI, Form, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -29,7 +35,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="QR Inventory System Web",
     description="スマートフォン・PCブラウザ向け在庫管理Webアプリ",
-    version="2.0.0-phase3",
+    version="2.0.0-phase4",
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -37,26 +43,104 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
 NAV_ITEMS = [
-    {"label": "トップ", "url": "/"},
-    {"label": "品目一覧", "url": "/items"},
-    {"label": "管理者", "url": "/admin"},
-    {"label": "品目登録", "url": "/items/new"},
-    {"label": "品目検索", "url": "/search"},
-    {"label": "入庫", "url": "/stock-in"},
-    {"label": "出庫", "url": "/stock-out"},
-    {"label": "棚卸修正", "url": "/stock-adjust"},
-    {"label": "最低在庫", "url": "/low-stock"},
-    {"label": "CSV取込", "url": "/csv-import"},
-    {"label": "QRコード", "url": "/qr-codes"},
-    {"label": "ラベル印刷", "url": "/labels"},
-    {"label": "DBバックアップ", "url": "/db-backup"},
-    {"label": "DB復旧", "url": "/db-restore"},
+    {"label": "トップ", "url": "/", "requires_admin": False},
+    {"label": "品目一覧", "url": "/items", "requires_admin": False},
+    {"label": "品目検索", "url": "/search", "requires_admin": False},
+    {"label": "入庫", "url": "/stock-in", "requires_admin": False},
+    {"label": "出庫", "url": "/stock-out", "requires_admin": False},
+    {"label": "最低在庫", "url": "/low-stock", "requires_admin": False},
+    {"label": "管理者", "url": "/admin", "requires_admin": True},
+    {"label": "品目登録", "url": "/items/new", "requires_admin": True},
+    {"label": "棚卸修正", "url": "/stock-adjust", "requires_admin": True},
+    {"label": "CSV取込", "url": "/csv-import", "requires_admin": True},
+    {"label": "QRコード", "url": "/qr-codes", "requires_admin": True},
+    {"label": "ラベル印刷", "url": "/labels", "requires_admin": True},
+    {"label": "DBバックアップ", "url": "/db-backup", "requires_admin": True},
+    {"label": "DB復旧", "url": "/db-restore", "requires_admin": True},
 ]
+
+ADMIN_COOKIE_NAME = "qr_inventory_admin"
+ADMIN_PASSWORD_ENV = "QR_INVENTORY_ADMIN_PASSWORD"
+DEFAULT_ADMIN_PASSWORD = "admin123"
+ADMIN_PROTECTED_PREFIXES = (
+    "/admin",
+    "/stock-adjust",
+    "/csv-import",
+    "/qr-codes",
+    "/labels",
+    "/db-backup",
+    "/db-restore",
+)
+ADMIN_PROTECTED_ITEM_SUFFIXES = ("/edit", "/delete")
+
+
+def _get_session_secret() -> str:
+    """Return the secret used to sign the lightweight admin cookie."""
+    return os.getenv(
+        "QR_INVENTORY_SESSION_SECRET",
+        "qr-inventory-system-dev-session-secret",
+    )
+
+
+def _create_admin_cookie_value() -> str:
+    """Create a signed cookie value for the logged-in administrator state."""
+    signature = hmac.new(
+        _get_session_secret().encode("utf-8"),
+        b"admin",
+        hashlib.sha256,
+    ).hexdigest()
+    return f"admin.{signature}"
+
+
+def _is_admin_logged_in(request: Request) -> bool:
+    """Return whether the current cookie is authenticated as administrator."""
+    cookie_value = request.cookies.get(ADMIN_COOKIE_NAME, "")
+    return secrets.compare_digest(cookie_value, _create_admin_cookie_value())
+
+
+def _get_admin_password() -> str:
+    """Return the configured administrator password or the development default."""
+    return os.getenv(ADMIN_PASSWORD_ENV) or DEFAULT_ADMIN_PASSWORD
+
+
+def _is_admin_path(path: str) -> bool:
+    """Return whether a path belongs to administrator-only Web functions."""
+    if path == "/items/new" or path.startswith("/items/new/"):
+        return True
+    if path.startswith(ADMIN_PROTECTED_PREFIXES):
+        return True
+    if path.startswith("/items/") and path.endswith(ADMIN_PROTECTED_ITEM_SUFFIXES):
+        return True
+    return False
+
+
+def _login_redirect(request: Request) -> RedirectResponse:
+    """Redirect an unauthenticated admin request to the login page."""
+    next_url = request.url.path
+    if request.url.query:
+        next_url = f"{next_url}?{request.url.query}"
+    login_url = f"/login?next={quote(next_url, safe='/?:=&')}"
+    return RedirectResponse(login_url, status_code=303)
+
+
+def _safe_next_url(next_url: str) -> str:
+    """Allow only same-site relative redirects after login."""
+    normalized = next_url.strip() or "/admin"
+    if not normalized.startswith("/") or normalized.startswith("//"):
+        return "/admin"
+    if normalized.startswith(("/login", "/logout")):
+        return "/admin"
+    return normalized
 
 
 def _context(request: Request, **extra: Any) -> dict[str, Any]:
     """Build common template context."""
-    return {"request": request, "nav_items": NAV_ITEMS, **extra}
+    return {
+        "request": request,
+        "nav_items": NAV_ITEMS,
+        "is_admin_logged_in": _is_admin_logged_in(request),
+        **extra,
+    }
 
 
 def _format_path(path: Path | None) -> str:
@@ -122,6 +206,63 @@ def _normalize_required_text(value: str, label: str) -> str:
     if not normalized:
         raise ValueError(f"{label}を入力してください。")
     return normalized
+
+
+@app.middleware("http")
+async def admin_lock_middleware(request: Request, call_next):
+    """Require administrator login before serving protected Web pages."""
+    if _is_admin_path(request.url.path) and not _is_admin_logged_in(request):
+        return _login_redirect(request)
+    return await call_next(request)
+
+
+@app.get("/login")
+async def login_form(request: Request, next: str = "/admin"):
+    """Show the administrator login form."""
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        _context(request, next_url=_safe_next_url(next)),
+    )
+
+
+@app.post("/login")
+async def login_submit(
+    request: Request,
+    password: str = Form(...),
+    next: str = Form("/admin"),
+):
+    """Authenticate administrator password and store login state in session."""
+    next_url = _safe_next_url(next)
+    if secrets.compare_digest(password, _get_admin_password()):
+        response = RedirectResponse(next_url, status_code=303)
+        response.set_cookie(
+            ADMIN_COOKIE_NAME,
+            _create_admin_cookie_value(),
+            httponly=True,
+            samesite="lax",
+        )
+        return response
+
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        _context(
+            request,
+            next_url=next_url,
+            message="管理者パスワードが違います。",
+            message_type="error",
+        ),
+        status_code=401,
+    )
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    """Clear administrator login state."""
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie(ADMIN_COOKIE_NAME)
+    return response
 
 
 @app.get("/")
