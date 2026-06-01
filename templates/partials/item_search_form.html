@@ -1,0 +1,56 @@
+<form class="ios-form filter-form" method="get" action="{{ form_action }}">
+  <div class="filter-grid">
+    <div class="filter-field filter-field--wide">
+      <label for="{{ form_id_prefix }}-q">キーワード</label>
+      <input id="{{ form_id_prefix }}-q" name="q" type="search" value="{{ conditions.keyword }}" placeholder="品目ID・品名・型式など" autocomplete="off" {% if autofocus_search %}autofocus{% endif %}>
+    </div>
+
+    <div class="filter-field">
+      <label for="{{ form_id_prefix }}-maker">メーカー</label>
+      <select id="{{ form_id_prefix }}-maker" name="maker">
+        <option value="">すべて</option>
+        {% for maker in filter_options.makers %}
+          <option value="{{ maker }}" {% if conditions.maker == maker %}selected{% endif %}>{{ maker }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="{{ form_id_prefix }}-location">保管場所</label>
+      <select id="{{ form_id_prefix }}-location" name="location">
+        <option value="">すべて</option>
+        {% for location in filter_options.locations %}
+          <option value="{{ location }}" {% if conditions.location == location %}selected{% endif %}>{{ location }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="{{ form_id_prefix }}-stock-status">在庫状態</label>
+      <select id="{{ form_id_prefix }}-stock-status" name="stock_status">
+        {% for value, label in stock_status_options.items() %}
+          <option value="{{ value }}" {% if conditions.stock_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="{{ form_id_prefix }}-sort">並び替え</label>
+      <select id="{{ form_id_prefix }}-sort" name="sort">
+        {% for value, label in sort_options.items() %}
+          <option value="{{ value }}" {% if conditions.sort == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <label class="checkbox-card" for="{{ form_id_prefix }}-low-stock-only">
+    <input id="{{ form_id_prefix }}-low-stock-only" name="low_stock_only" type="checkbox" value="1" {% if conditions.low_stock_only %}checked{% endif %}>
+    <span>最低在庫割れのみ表示</span>
+  </label>
+
+  <div class="filter-actions">
+    <button type="submit" class="primary-button">検索・絞り込み</button>
+    <a class="secondary-button" href="{{ form_action }}">条件をクリア</a>
+  </div>
+</form>
