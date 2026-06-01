@@ -16,6 +16,7 @@ QR code based inventory management system using Python and SQLite.
 - Ver2.0 Web Phase 5 の外部公開テスト手順は `docs/web_external_access.md` に記載しています。
 - Ver2.0 Web Phase 6 の本番運用準備ガイドは `docs/production_setup.md` に記載しています。
 - Ver2.0 Web Phase 7 のVPS / クラウド公開設計は `docs/deployment_plan.md` に記載しています。
+- Ver2.0 Web Phase 8 では、Web操作の操作ログ・監査ログを管理者向けに追加しています。
 
 ## セットアップ
 
@@ -45,8 +46,8 @@ python src/gui_main.py
 
 ## Web版の起動方法
 
-Ver2.0 Web Phase 4 では、既存のCUI版・GUI版を残したまま、FastAPIベースのWeb版を `src/web_app.py` として拡張しています。
-スマートフォンやPCブラウザから、トップページ、品目一覧、品目検索、入庫、出庫、最低在庫アラートをログインなしで利用できます。品目登録・編集・削除、棚卸修正、CSV取込、QRコード生成、ラベル印刷用HTML生成、DBバックアップ、DB復旧は管理者ログイン後に利用できます。
+Ver2.0 Web Phase 8 では、既存のCUI版・GUI版を残したまま、FastAPIベースのWeb版を `src/web_app.py` として拡張しています。
+スマートフォンやPCブラウザから、トップページ、品目一覧、品目検索、入庫、出庫、最低在庫アラートをログインなしで利用できます。品目登録・編集・削除、棚卸修正、CSV取込、QRコード生成、ラベル印刷用HTML生成、DBバックアップ、DB復旧、操作ログ閲覧は管理者ログイン後に利用できます。
 
 1. リポジトリのルートで必要ライブラリをインストール
 
@@ -68,7 +69,7 @@ http://127.0.0.1:8000
 
 同じPCからのみ確認する場合は `127.0.0.1` を使います。スマートフォンなど別端末から接続する場合は、次の「同じWi-Fi内のスマートフォンからアクセスする方法」のように `0.0.0.0` で起動してください。
 
-### Web版 Phase 4 の管理者ログイン
+### Web版 Phase 8 の管理者ログイン
 
 管理者系機能を開くには、先に `/login` で管理者パスワードを入力します。ログイン状態はブラウザのセッションCookieで保持され、`/logout` で解除できます。
 
@@ -94,7 +95,7 @@ $env:QR_INVENTORY_SESSION_SECRET = '任意の長いランダム文字列'
 python -m uvicorn src.web_app:app --reload --host 127.0.0.1 --port 8000
 ```
 
-ログインなしで利用できる通常機能は、品目一覧、品目検索、入庫、出庫、最低在庫です。品目登録、品目編集、品目削除、棚卸修正、CSV取込、QRコード、ラベル印刷、DBバックアップ、DB復旧、管理者メニューは未ログイン時に `/login` へ移動します。
+ログインなしで利用できる通常機能は、品目一覧、品目検索、入庫、出庫、最低在庫です。品目登録、品目編集、品目削除、棚卸修正、CSV取込、QRコード、ラベル印刷、DBバックアップ、DB復旧、操作ログ、管理者メニューは未ログイン時に `/login` へ移動します。
 
 ### 同じWi-Fi内のスマートフォンからアクセスする方法
 
@@ -122,7 +123,7 @@ http://192.168.1.10:8000
 
 ファイアウォールでポート `8000` がブロックされている場合は、PC側で許可してください。
 
-### Web版 Phase 4 で利用できる機能
+### Web版 Phase 8 で利用できる機能
 
 - 品目登録: 管理者ログイン後、`/items/new` から品目ID、品名、最低在庫数、初期在庫数などを入力して登録できます。
 - 品目編集: 管理者ログイン後、品目一覧のカードから編集画面へ移動し、品目マスタの基本情報を更新できます。
@@ -130,13 +131,14 @@ http://192.168.1.10:8000
 - 棚卸修正: 管理者ログイン後、`/stock-adjust` から実在庫数を入力し、ADJUST履歴として差異を記録できます。
 - 管理者メニュー: 管理者ログイン後、`/admin` から品目登録、品目編集・削除、棚卸修正、最低在庫確認、CSV取込、QRコード、ラベル印刷、DBバックアップ、DB復旧へ移動できます。
 
-### Web版 Phase 4 の実用機能
+### Web版の実用機能
 
 - CSV取込: 管理者ログイン後、`/csv-import` でCSVファイルをアップロードし、取込前プレビューを確認してから品目マスタを登録・更新できます。対応文字コードは `utf-8-sig`, `utf-8`, `cp932`, `shift_jis` です。登録予定件数、更新予定件数、エラー件数、使用文字コードに加えて、CSV各行の処理区分（登録/更新/エラー）と主要項目を表示し、エラーがある場合は取込を実行できません。取込実行前には `backups/auto_csv_import_YYYYMMDD_HHMMSS.db` の自動バックアップを作成します。
 - QRコード: 管理者ログイン後、`/qr-codes` で品目IDまたはQRコードを指定した単品生成と、全品目分の一括生成を実行できます。既存の `src/qr_utils.py` を利用し、生成したPNGの保存先を画面に表示します。
 - ラベル印刷: 管理者ログイン後、`/labels` で既存の `src/label_utils.py` を利用し、`labels/qr_labels_YYYYMMDD_HHMMSS.html` を生成します。未生成のQR画像はラベルHTML生成時に自動生成されます。
 - DBバックアップ: 管理者ログイン後、`/db-backup` で `data/inventory.db` を `backups/inventory_YYYYMMDD_HHMMSS.db` として保存し、バックアップ一覧を表示します。
 - DB復旧: 管理者ログイン後、`/db-restore` でバックアップ一覧から復旧元を選択します。復旧前に現在DBを `backups/auto_before_restore_YYYYMMDD_HHMMSS.db` として自動バックアップし、誤操作防止のため確認文字列 `RESTORE` の入力を要求します。
+- 操作ログ: 管理者ログイン後、`/audit-logs` で入庫、出庫、棚卸修正、品目登録・編集・削除、CSV取込フォーム送信、QRコード生成、ラベル印刷HTML生成、DBバックアップ、DB復旧、ログイン成功、ログイン失敗、ログアウトを新しい順に最大100件確認できます。操作日時、操作種別、対象品目ID、対象品目名、数量、メッセージをスマートフォン縦画面でも読みやすいカード形式で表示します。
 
 ## GUI版の使い方
 
@@ -204,6 +206,16 @@ GUI版 Phase 2 では、CUI版で提供していた品目マスタ管理と棚�
 - `operator` (TEXT)
 - `transaction_date` (TEXT, DEFAULT CURRENT_TIMESTAMP)
 - `note` (TEXT)
+
+### audit_logs
+
+- `audit_log_id` (INTEGER, PK AUTOINCREMENT)
+- `operation_date` (TEXT, DEFAULT CURRENT_TIMESTAMP)
+- `operation_type` (TEXT, NOT NULL) ※ 入庫 / 出庫 / 棚卸修正 / 品目登録 / 品目編集 / 品目削除 / CSV取込 / QRコード生成 / ラベル印刷 / DBバックアップ / DB復旧 / ログイン成功 / ログイン失敗 / ログアウト
+- `target_item_id` (TEXT)
+- `target_item_name` (TEXT)
+- `quantity` (INTEGER)
+- `message` (TEXT)
 
 ## サンプルデータ
 

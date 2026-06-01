@@ -109,6 +109,90 @@ def restore_database_from_backup(
     }
 
 
+def _ensure_audit_log_table(connection: sqlite3.Connection) -> None:
+    """Ensure audit log storage exists even after restoring an older backup."""
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            audit_log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            operation_date TEXT DEFAULT CURRENT_TIMESTAMP,
+            operation_type TEXT NOT NULL,
+            target_item_id TEXT,
+            target_item_name TEXT,
+            quantity INTEGER,
+            message TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_operation_date
+        ON audit_logs (operation_date DESC, audit_log_id DESC)
+        """
+    )
+
+
+def record_audit_log(
+    operation_type: str,
+    target_item_id: str | None = None,
+    target_item_name: str | None = None,
+    quantity: int | None = None,
+    message: str = "",
+    db_path: Path = DB_PATH,
+) -> None:
+    """Record an important operation in the audit log table."""
+    operation_type = operation_type.strip()
+    if not operation_type:
+        raise ValueError("操作種別は必須です。")
+
+    with get_connection(db_path) as connection:
+        _ensure_audit_log_table(connection)
+        connection.execute(
+            """
+            INSERT INTO audit_logs (
+                operation_type,
+                target_item_id,
+                target_item_name,
+                quantity,
+                message
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                operation_type,
+                (target_item_id or "").strip() or None,
+                (target_item_name or "").strip() or None,
+                quantity,
+                message.strip(),
+            ),
+        )
+        connection.commit()
+
+
+def list_audit_logs(limit: int = 100, db_path: Path = DB_PATH) -> list[sqlite3.Row]:
+    """Return recent audit logs ordered by newest first."""
+    safe_limit = max(1, min(int(limit), 500))
+    with get_connection(db_path) as connection:
+        _ensure_audit_log_table(connection)
+        rows = connection.execute(
+            """
+            SELECT
+                audit_log_id,
+                operation_date,
+                operation_type,
+                target_item_id,
+                target_item_name,
+                quantity,
+                message
+            FROM audit_logs
+            ORDER BY operation_date DESC, audit_log_id DESC
+            LIMIT ?
+            """,
+            (safe_limit,),
+        ).fetchall()
+    return rows
+
+
 def get_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
     """Create a SQLite connection with row factory enabled."""
     db_path.parent.mkdir(parents=True, exist_ok=True)

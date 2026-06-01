@@ -812,3 +812,46 @@ body {
     margin-top: 0;
   }
 }
+
+.audit-log-list {
+  display: grid;
+  gap: 14px;
+}
+
+.audit-log-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #ffffff;
+}
+
+.audit-log-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.audit-log-card h3 {
+  margin: 2px 0 0;
+  font-size: 1.22rem;
+}
+
+.audit-log-meta__message {
+  grid-column: 1 / -1;
+}
+
+.audit-log-meta dd {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .audit-log-card__top {
+    flex-direction: column;
+  }
+
+  .audit-log-card .stock-pill {
+    width: 100%;
+    text-align: center;
+  }
+}
