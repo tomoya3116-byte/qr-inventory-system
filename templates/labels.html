@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}ラベル印刷 | QR在庫管理 Web{% endblock %}
+{% block page_title %}ラベル印刷{% endblock %}
+{% block content %}
+{% if message %}<div class="message message--{{ message_type }}">{{ message }}</div>{% endif %}
+<section class="section-card">
+  <div class="section-heading section-heading--stacked">
+    <div>
+      <h2>QRラベル印刷用HTML生成</h2>
+      <p>既存の label_utils.py を使い、A4印刷向けHTMLを labels/ に保存します。</p>
+    </div>
+  </div>
+  <p class="note">対象品目: {{ item_count }} 件。未生成のQR画像は自動生成されます。</p>
+  <form class="ios-form" action="/labels/generate" method="post">
+    <button class="primary-button" type="submit">ラベル印刷用HTMLを生成</button>
+  </form>
+  {% if saved_path %}<p class="path-box">保存先: {{ saved_path }}</p>{% endif %}
+</section>
+{% endblock %}

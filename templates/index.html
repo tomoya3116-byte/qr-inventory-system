@@ -5,7 +5,7 @@
 <section class="hero-card">
   <p class="eyebrow">スマホ・PCブラウザ対応</p>
   <h2>現場の入出庫をすばやく記録</h2>
-  <p>品目検索、入庫、出庫、最低在庫アラートを大きなボタンで操作できます。</p>
+  <p>品目登録・編集・削除、入出庫、棚卸修正、CSV取込、QRコード生成、DBバックアップ/復旧を大きなボタンで操作できます。</p>
 </section>
 
 <section class="stats-grid" aria-label="在庫サマリー">
@@ -22,10 +22,18 @@
 </section>
 
 <section class="menu-grid" aria-label="機能メニュー">
-  <a class="menu-card" href="/items"><span>📦</span><strong>品目一覧</strong><small>全品目の在庫を確認</small></a>
+  <a class="menu-card" href="/admin"><span>🔐</span><strong>管理者メニュー</strong><small>品目管理・棚卸修正をまとめて実行</small></a>
+  <a class="menu-card" href="/items"><span>📦</span><strong>品目一覧</strong><small>全品目の在庫を確認・編集</small></a>
+  <a class="menu-card" href="/items/new"><span>➕</span><strong>品目登録</strong><small>新しい品目を追加</small></a>
   <a class="menu-card" href="/search"><span>🔎</span><strong>品目検索</strong><small>IDまたはQRコードで検索</small></a>
   <a class="menu-card" href="/stock-in"><span>⬆️</span><strong>入庫</strong><small>在庫を追加</small></a>
   <a class="menu-card" href="/stock-out"><span>⬇️</span><strong>出庫</strong><small>在庫を減算</small></a>
+  <a class="menu-card" href="/stock-adjust"><span>🧮</span><strong>棚卸修正</strong><small>実在庫で補正</small></a>
   <a class="menu-card" href="/low-stock"><span>⚠️</span><strong>最低在庫</strong><small>補充対象を確認</small></a>
+  <a class="menu-card" href="/csv-import"><span>📥</span><strong>CSV取込</strong><small>取込画面を準備中</small></a>
+  <a class="menu-card" href="/qr-codes"><span>▦</span><strong>QRコード</strong><small>単品・全件生成</small></a>
+  <a class="menu-card" href="/labels"><span>🏷️</span><strong>ラベル印刷</strong><small>印刷HTMLを生成</small></a>
+  <a class="menu-card" href="/db-backup"><span>💾</span><strong>DBバックアップ</strong><small>DBを退避</small></a>
+  <a class="menu-card" href="/db-restore"><span>♻️</span><strong>DB復旧</strong><small>バックアップから復旧</small></a>
 </section>
 {% endblock %}

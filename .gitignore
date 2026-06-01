@@ -19,3 +19,6 @@ database.txt
 qr_codes/*.png
 # Generated QR label HTML sheets
 labels/*.html
+
+# Web upload work files
+data/web_uploads/

@@ -15,4 +15,10 @@
     <div><dt>最低在庫</dt><dd>{{ item.min_stock }} {{ item.unit }}</dd></div>
   </dl>
   {% if item.note %}<p class="note">{{ item.note }}</p>{% endif %}
+  <div class="card-actions" aria-label="品目操作">
+    <a class="mini-button" href="/stock-in?item_id={{ item.item_id }}">入庫</a>
+    <a class="mini-button" href="/stock-out?item_id={{ item.item_id }}">出庫</a>
+    <a class="mini-button" href="/stock-adjust?item_id={{ item.item_id }}">棚卸</a>
+    <a class="mini-button" href="/items/{{ item.item_id }}/edit">編集</a>
+  </div>
 </article>

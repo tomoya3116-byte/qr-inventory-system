@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}CSV取込 | QR在庫管理 Web{% endblock %}
+{% block page_title %}CSV取込{% endblock %}
+{% block page_subtitle %}CSVファイルを選択してプレビューへ進む準備画面です{% endblock %}
+
+{% block content %}
+<section class="hero-card">
+  <p class="eyebrow">Web Phase 3-A-1</p>
+  <div class="section-heading">
+    <div>
+      <h2>CSV取込</h2>
+      <p class="lead">CSV取込機能は準備中です。今回はファイル選択フォームのみ表示します。</p>
+    </div>
+  </div>
+  <div class="csv-guide" aria-label="CSV取込ガイド">
+    <div>
+      <strong>1. CSVを選択</strong>
+      <span>品目マスタCSVを端末から選びます。</span>
+    </div>
+    <div>
+      <strong>2. プレビュー</strong>
+      <span>次フェーズで取込前の内容確認を追加します。</span>
+    </div>
+  </div>
+</section>
+
+{% if message %}
+  <div class="message message--{{ message_type|default('info') }}" role="status">{{ message }}</div>
+{% endif %}
+
+<section class="section-card">
+  <h2>CSVファイル選択</h2>
+  <p class="note">この画面ではまだDB取込処理は実行しません。CSVファイルを選択して「プレビュー」を押すと準備中メッセージを表示します。</p>
+  <form class="ios-form" action="/csv-import" method="post" enctype="multipart/form-data">
+    <label for="csv_file">CSVファイル</label>
+    <input id="csv_file" name="csv_file" type="file" accept=".csv,text/csv">
+    <p class="note csv-column-note">対応予定形式: .csv / text/csv</p>
+    <button class="primary-button" type="submit">プレビュー</button>
+  </form>
+</section>
+{% endblock %}

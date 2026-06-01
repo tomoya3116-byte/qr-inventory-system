@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}DB復旧 | QR在庫管理 Web{% endblock %}
+{% block page_title %}DB復旧{% endblock %}
+{% block content %}
+{% if message %}<div class="message message--{{ message_type }}">{{ message }}</div>{% endif %}
+<section class="section-card danger-zone">
+  <h2>DB復旧</h2>
+  <p class="note">選択したバックアップで現在DBを上書きします。復旧前に自動バックアップを作成します。</p>
+  {% if backups %}
+  <form class="ios-form" action="/db-restore" method="post">
+    <label for="backup_filename">復旧元バックアップ</label>
+    <select id="backup_filename" name="backup_filename" required>
+      {% for backup in backups %}<option value="{{ backup.filename }}">{{ backup.filename }}（{{ backup.updated_at }} / {{ backup.size }} bytes）</option>{% endfor %}
+    </select>
+    <label for="confirmation">確認文字列 <span class="required-mark">RESTORE と入力</span></label>
+    <input id="confirmation" name="confirmation" autocomplete="off" required>
+    <button class="danger-button" type="submit">DB復旧を実行</button>
+  </form>
+  {% else %}
+    <p class="empty-message">復旧可能なバックアップがありません。</p>
+  {% endif %}
+</section>
+{% if restore_result %}
+<section class="section-card">
+  <h2>復旧結果</h2>
+  <p class="path-box">復旧元: {{ restore_result.source_path }}</p>
+  <p class="path-box">復旧先: {{ restore_result.restored_path }}</p>
+  <p class="path-box">復旧前自動バックアップ: {{ restore_result.before_restore_path }}</p>
+</section>
+{% endif %}
+<section class="section-card">
+  <h2>バックアップ一覧</h2>
+  {% include "partials/backup_list.html" %}
+</section>
+{% endblock %}
