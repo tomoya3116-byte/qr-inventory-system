@@ -14,6 +14,7 @@ QR code based inventory management system using Python and SQLite.
 - Ver2.0 は、スマートフォンやPCブラウザから利用できるWebアプリ版として開発予定です。
 - Ver2.0の仕様書は `docs/v2_spec.md` に記載しています。
 - Ver2.0 Web Phase 5 の外部公開テスト手順は `docs/web_external_access.md` に記載しています。
+- Ver2.0 Web Phase 6 の本番運用準備ガイドは `docs/production_setup.md` に記載しています。
 
 ## セットアップ
 

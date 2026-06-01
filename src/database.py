@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import os
 import re
 import shutil
 import sqlite3
@@ -10,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-DB_PATH = Path("data/inventory.db")
+DB_PATH = Path(os.getenv("QR_INVENTORY_DB_PATH", "data/inventory.db"))
 BACKUP_DIR = Path("backups")
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
