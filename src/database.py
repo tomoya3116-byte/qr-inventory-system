@@ -10,6 +10,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from urllib.parse import unquote, urlparse
 
 DB_PATH = Path(os.getenv("QR_INVENTORY_DB_PATH", "data/inventory.db"))
 BACKUP_DIR = Path("backups")
@@ -952,8 +953,25 @@ def list_low_stock_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
     return rows
 
 
+def normalize_item_lookup_key(value: str) -> str:
+    """Normalize item lookup values from IDs, QR text, or /scan/{item_id} URLs."""
+    normalized = value.strip()
+    if not normalized:
+        return ""
+
+    parsed = urlparse(normalized)
+    path = parsed.path or normalized
+    scan_prefix = "/scan/"
+    if path.startswith(scan_prefix):
+        scanned_item_id = path[len(scan_prefix):].split("/", 1)[0]
+        if scanned_item_id:
+            return unquote(scanned_item_id).strip()
+    return normalized
+
+
 def find_item_by_id(item_id: str, db_path: Path = DB_PATH) -> Optional[sqlite3.Row]:
-    """Find a single item by its item_id or qr_code."""
+    """Find a single item by its item_id, qr_code, or Web scan URL."""
+    lookup_key = normalize_item_lookup_key(item_id)
     with get_connection(db_path) as connection:
         row = connection.execute(
             """
@@ -971,9 +989,14 @@ def find_item_by_id(item_id: str, db_path: Path = DB_PATH) -> Optional[sqlite3.R
             FROM items
             WHERE item_id = ? OR qr_code = ?
             """,
-            (item_id, item_id),
+            (lookup_key, lookup_key),
         ).fetchone()
     return row
+
+
+def get_item_for_scan(item_id: str, db_path: Path = DB_PATH) -> Optional[sqlite3.Row]:
+    """Return the item displayed by the Web QR scan screen."""
+    return find_item_by_id(item_id.strip(), db_path=db_path)
 
 
 def increase_stock(
@@ -986,11 +1009,12 @@ def increase_stock(
     """Increase item stock and record an IN transaction."""
     if quantity <= 0:
         raise ValueError("入庫数量は1以上を指定してください。")
+    lookup_key = normalize_item_lookup_key(item_id)
 
     with get_connection(db_path) as connection:
         item = connection.execute(
             "SELECT item_id, current_stock FROM items WHERE item_id = ? OR qr_code = ?",
-            (item_id, item_id),
+            (lookup_key, lookup_key),
         ).fetchone()
         if item is None:
             raise ValueError(f"品目ID '{item_id}' は存在しません。")
@@ -1024,11 +1048,12 @@ def decrease_stock(
     """Decrease item stock and record an OUT transaction."""
     if quantity <= 0:
         raise ValueError("出庫数量は1以上を指定してください。")
+    lookup_key = normalize_item_lookup_key(item_id)
 
     with get_connection(db_path) as connection:
         item = connection.execute(
             "SELECT item_id, current_stock FROM items WHERE item_id = ? OR qr_code = ?",
-            (item_id, item_id),
+            (lookup_key, lookup_key),
         ).fetchone()
         if item is None:
             raise ValueError(f"品目ID '{item_id}' は存在しません。")
@@ -1068,11 +1093,12 @@ def adjust_stock(
     """Set item stock to the actual counted quantity and record an ADJUST transaction."""
     if actual_stock < 0:
         raise ValueError("実在庫数は0以上を指定してください。")
+    lookup_key = normalize_item_lookup_key(item_id)
 
     with get_connection(db_path) as connection:
         item = connection.execute(
             "SELECT item_id, current_stock FROM items WHERE item_id = ? OR qr_code = ?",
-            (item_id, item_id),
+            (lookup_key, lookup_key),
         ).fetchone()
         if item is None:
             raise ValueError(f"品目ID '{item_id}' は存在しません。")

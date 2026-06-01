@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}品目詳細 | QR在庫管理 Web{% endblock %}
+{% block page_title %}品目詳細{% endblock %}
+{% block content %}
+{% if message %}
+  <div class="message message--{{ message_type }}" role="alert">{{ message }}</div>
+{% endif %}
+
+{% if item %}
+<section class="section-card">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Item Detail</p>
+      <h2>{{ item.item_name }}</h2>
+    </div>
+    <p>{{ item.item_id }}</p>
+  </div>
+  {% include "partials/item_card.html" %}
+</section>
+
+<section class="section-card">
+  <h2>詳細情報</h2>
+  <dl class="scan-meta-grid">
+    <div><dt>現在庫</dt><dd>{{ item.current_stock }} {{ item.unit }}</dd></div>
+    <div><dt>最低在庫</dt><dd>{{ item.min_stock }} {{ item.unit }}</dd></div>
+    <div><dt>保管場所</dt><dd>{{ item.location or '—' }}</dd></div>
+    <div><dt>メーカー</dt><dd>{{ item.maker or '—' }}</dd></div>
+    <div><dt>型式</dt><dd>{{ item.model_number or '—' }}</dd></div>
+    <div><dt>QRスキャンURL</dt><dd><code>{{ scan_url }}</code></dd></div>
+  </dl>
+  {% if item.note %}<p class="note">{{ item.note }}</p>{% endif %}
+  <div class="action-row action-row--wrap">
+    <a class="primary-button" href="{{ stock_in_url }}">入庫する</a>
+    <a class="danger-button" href="{{ stock_out_url }}">出庫する</a>
+    <a class="secondary-button" href="{{ scan_url }}">QRスキャン画面</a>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
