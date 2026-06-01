@@ -4,8 +4,25 @@
 {% block content %}
 <section class="section-card">
   <div class="section-heading">
+    <div>
+      <h2>検索・絞り込み</h2>
+      <p>キーワード、メーカー、保管場所、在庫状態で品目を絞り込めます。</p>
+    </div>
+    {% if active_filter_count %}<p>{{ active_filter_count }}条件</p>{% endif %}
+  </div>
+  {% set form_action = "/items" %}
+  {% set form_id_prefix = "items" %}
+  {% set autofocus_search = false %}
+  {% include "partials/item_search_form.html" %}
+  <div class="filter-navigation">
+    <a class="mini-button" href="{{ search_url_with_query }}">同じ条件で検索画面へ</a>
+  </div>
+</section>
+
+<section class="section-card">
+  <div class="section-heading">
     <h2>登録品目</h2>
-    <p>{{ items|length }}件</p>
+    <p>{{ result_count }}件</p>
   </div>
   {% if is_admin_logged_in %}
     <a class="primary-button full-width-button" href="/items/new">品目を登録する</a>
@@ -19,7 +36,7 @@
       {% endfor %}
     </div>
   {% else %}
-    <p class="empty-message">登録されている品目はありません。</p>
+    <p class="empty-message">条件に一致する品目はありません。条件を変更するか、条件をクリアしてください。</p>
   {% endif %}
 </section>
 {% endblock %}

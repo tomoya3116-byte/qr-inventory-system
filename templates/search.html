@@ -3,28 +3,39 @@
 {% block page_title %}品目検索{% endblock %}
 {% block content %}
 <section class="section-card">
-  <h2>ID・QRコードで検索</h2>
-  <form class="ios-form" method="get" action="/search">
-    <label for="q">品目IDまたはQRコード</label>
-    <input id="q" name="q" type="search" value="{{ keyword }}" placeholder="例: ITEM-0001" autocomplete="off" autofocus>
-    <button type="submit" class="primary-button">検索する</button>
-  </form>
+  <div class="section-heading">
+    <div>
+      <h2>品目検索</h2>
+      <p>品目ID、QRコード、品名、型式などをまとめて検索できます。</p>
+    </div>
+    {% if has_search_condition %}<p>{{ result_count }}件</p>{% endif %}
+  </div>
+  {% set form_action = "/search" %}
+  {% set form_id_prefix = "search" %}
+  {% set autofocus_search = true %}
+  {% include "partials/item_search_form.html" %}
+  <div class="filter-navigation">
+    <a class="mini-button" href="{{ items_url_with_query }}">同じ条件で品目一覧へ</a>
+  </div>
 </section>
 
 {% if message %}
   <div class="message message--error" role="alert">{{ message }}</div>
 {% endif %}
 
-{% if item %}
+{% if has_search_condition and items %}
 <section class="section-card">
-  <h2>検索結果</h2>
-  {% include "partials/item_card.html" %}
-  <div class="action-row action-row--wrap">
-    <a class="secondary-button" href="/stock-in?item_id={{ item.item_id }}">入庫へ</a>
-    <a class="secondary-button" href="/stock-out?item_id={{ item.item_id }}">出庫へ</a>
-    <a class="secondary-button" href="/stock-adjust?item_id={{ item.item_id }}">棚卸修正へ</a>
-    <a class="secondary-button" href="/items/{{ item.item_id }}/edit">編集へ</a>
+  <div class="section-heading">
+    <h2>検索結果</h2>
+    <p>{{ result_count }}件</p>
+  </div>
+  <div class="item-list">
+    {% for item in items %}
+      {% include "partials/item_card.html" %}
+    {% endfor %}
   </div>
 </section>
+{% elif not has_search_condition %}
+  <p class="empty-message">検索条件を入力して「検索・絞り込み」を押してください。</p>
 {% endif %}
 {% endblock %}

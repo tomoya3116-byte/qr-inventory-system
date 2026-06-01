@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import secrets
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="QR Inventory System Web",
     description="スマートフォン・PCブラウザ向け在庫管理Webアプリ",
-    version="2.0.0-phase9",
+    version="2.0.0-phase10",
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -348,6 +348,86 @@ def _normalize_required_text(value: str, label: str) -> str:
     return normalized
 
 
+ITEM_SORT_LABELS = {
+    "item_id": "品目ID順",
+    "item_name": "品目名順",
+    "stock_asc": "現在庫少ない順",
+    "location": "保管場所順",
+}
+
+STOCK_STATUS_LABELS = {
+    "all": "すべて",
+    "in_stock": "在庫あり",
+    "out_of_stock": "在庫なし",
+}
+
+
+def _item_search_conditions(request: Request) -> dict[str, object]:
+    """Normalize item search/filter query parameters for database utilities."""
+    stock_status = request.query_params.get("stock_status", "all").strip()
+    if stock_status not in STOCK_STATUS_LABELS:
+        stock_status = "all"
+
+    sort = request.query_params.get("sort", "item_id").strip()
+    if sort not in ITEM_SORT_LABELS:
+        sort = "item_id"
+
+    return {
+        "keyword": request.query_params.get("q", "").strip(),
+        "maker": request.query_params.get("maker", "").strip(),
+        "location": request.query_params.get("location", "").strip(),
+        "low_stock_only": request.query_params.get("low_stock_only") == "1",
+        "stock_status": stock_status,
+        "sort": sort,
+    }
+
+
+def _item_search_query(conditions: dict[str, object]) -> str:
+    """Return a query string preserving non-empty item search conditions."""
+    query_values: dict[str, str] = {}
+    for key in ("q", "maker", "location", "stock_status", "sort"):
+        condition_key = "keyword" if key == "q" else key
+        value = str(conditions.get(condition_key, "")).strip()
+        if not value:
+            continue
+        if key == "stock_status" and value == "all":
+            continue
+        if key == "sort" and value == "item_id":
+            continue
+        query_values[key] = value
+    if conditions.get("low_stock_only"):
+        query_values["low_stock_only"] = "1"
+    return urlencode(query_values)
+
+
+def _item_search_context(request: Request) -> dict[str, object]:
+    """Build shared context for item list and item search screens."""
+    conditions = _item_search_conditions(request)
+    items = database.search_items(**conditions)
+    filter_options = database.list_item_filter_options()
+    query_string = _item_search_query(conditions)
+    return {
+        "items": items,
+        "conditions": conditions,
+        "filter_options": filter_options,
+        "sort_options": ITEM_SORT_LABELS,
+        "stock_status_options": STOCK_STATUS_LABELS,
+        "result_count": len(items),
+        "active_filter_count": len([
+            value
+            for key, value in conditions.items()
+            if value
+            and not (
+                key in {"stock_status", "sort"}
+                and value in {"all", "item_id"}
+            )
+        ]),
+        "search_query_string": query_string,
+        "items_url_with_query": f"/items?{query_string}" if query_string else "/items",
+        "search_url_with_query": f"/search?{query_string}" if query_string else "/search",
+    }
+
+
 @app.middleware("http")
 async def admin_lock_middleware(request: Request, call_next):
     """Require administrator login before serving protected Web pages."""
@@ -427,11 +507,11 @@ async def index(request: Request):
 
 @app.get("/items")
 async def items(request: Request):
-    """Show all registered items."""
+    """Show registered items with search and filtering controls."""
     return templates.TemplateResponse(
         request,
         "items.html",
-        _context(request, items=database.list_items()),
+        _context(request, **_item_search_context(request)),
     )
 
 
@@ -668,15 +748,33 @@ async def delete_item(
 
 
 @app.get("/search")
-async def search(request: Request, q: str = ""):
-    """Search an item by item id or QR code."""
-    keyword = q.strip()
-    item = database.find_item_by_id(keyword) if keyword else None
-    message = "品目が見つかりません" if keyword and item is None else ""
+async def search(request: Request):
+    """Search items by keyword and filters."""
+    search_context = _item_search_context(request)
+    conditions = search_context["conditions"]
+    has_search_condition = any(
+        [
+            conditions["keyword"],
+            conditions["maker"],
+            conditions["location"],
+            conditions["low_stock_only"],
+            conditions["stock_status"] != "all",
+        ]
+    )
+    message = (
+        "検索条件に一致する品目が見つかりません。"
+        if has_search_condition and not search_context["items"]
+        else ""
+    )
     return templates.TemplateResponse(
         request,
         "search.html",
-        _context(request, keyword=keyword, item=item, message=message),
+        _context(
+            request,
+            **search_context,
+            message=message,
+            has_search_condition=has_search_condition,
+        ),
     )
 
 

@@ -423,25 +423,130 @@ def delete_item(item_id: str, db_path: Path = DB_PATH) -> None:
         connection.commit()
 
 
+ITEM_SORT_OPTIONS = {
+    "item_id": "item_id ASC",
+    "item_name": "item_name ASC, item_id ASC",
+    "stock_asc": "current_stock ASC, item_id ASC",
+    "location": "location ASC, item_id ASC",
+}
+
+
+def _item_select_columns() -> str:
+    """Return the common item column list used by inventory queries."""
+    return """
+        item_id,
+        item_name,
+        model_number,
+        maker,
+        location,
+        unit,
+        min_stock,
+        current_stock,
+        qr_code,
+        note
+    """
+
+
 def list_items(db_path: Path = DB_PATH) -> list[sqlite3.Row]:
     """Return all items ordered by item_id."""
+    return search_items(db_path=db_path)
+
+
+def search_items(
+    keyword: str = "",
+    maker: str = "",
+    location: str = "",
+    low_stock_only: bool = False,
+    stock_status: str = "all",
+    sort: str = "item_id",
+    db_path: Path = DB_PATH,
+) -> list[sqlite3.Row]:
+    """Return items matching search/filter conditions.
+
+    Keyword search covers fields useful at the work site: item id, QR code,
+    item name, model number, maker, storage location, and note.
+    """
+    where_clauses: list[str] = []
+    parameters: list[object] = []
+
+    normalized_keyword = keyword.strip()
+    if normalized_keyword:
+        like_keyword = f"%{normalized_keyword}%"
+        where_clauses.append(
+            "("
+            "item_id LIKE ? OR "
+            "qr_code LIKE ? OR "
+            "item_name LIKE ? OR "
+            "model_number LIKE ? OR "
+            "maker LIKE ? OR "
+            "location LIKE ? OR "
+            "note LIKE ?"
+            ")"
+        )
+        parameters.extend([like_keyword] * 7)
+
+    normalized_maker = maker.strip()
+    if normalized_maker:
+        where_clauses.append("maker = ?")
+        parameters.append(normalized_maker)
+
+    normalized_location = location.strip()
+    if normalized_location:
+        where_clauses.append("location = ?")
+        parameters.append(normalized_location)
+
+    if low_stock_only:
+        where_clauses.append("current_stock <= min_stock")
+
+    if stock_status == "in_stock":
+        where_clauses.append("current_stock > 0")
+    elif stock_status == "out_of_stock":
+        where_clauses.append("current_stock <= 0")
+
+    where_sql = ""
+    if where_clauses:
+        where_sql = "WHERE " + " AND ".join(where_clauses)
+
+    order_sql = ITEM_SORT_OPTIONS.get(sort, ITEM_SORT_OPTIONS["item_id"])
+
     with get_connection(db_path) as connection:
-        rows = connection.execute("""
+        rows = connection.execute(
+            f"""
             SELECT
-                item_id,
-                item_name,
-                model_number,
-                maker,
-                location,
-                unit,
-                min_stock,
-                current_stock,
-                qr_code,
-                note
+                {_item_select_columns()}
             FROM items
-            ORDER BY item_id ASC
-            """).fetchall()
+            {where_sql}
+            ORDER BY {order_sql}
+            """,
+            parameters,
+        ).fetchall()
     return rows
+
+
+def list_item_filter_options(db_path: Path = DB_PATH) -> dict[str, list[str]]:
+    """Return maker and location choices for item filtering forms."""
+    with get_connection(db_path) as connection:
+        maker_rows = connection.execute(
+            """
+            SELECT DISTINCT maker
+            FROM items
+            WHERE maker IS NOT NULL AND TRIM(maker) <> ''
+            ORDER BY maker ASC
+            """
+        ).fetchall()
+        location_rows = connection.execute(
+            """
+            SELECT DISTINCT location
+            FROM items
+            WHERE location IS NOT NULL AND TRIM(location) <> ''
+            ORDER BY location ASC
+            """
+        ).fetchall()
+
+    return {
+        "makers": [row["maker"] for row in maker_rows],
+        "locations": [row["location"] for row in location_rows],
+    }
 
 
 def get_item_for_qr(item_id: str, db_path: Path = DB_PATH) -> Optional[sqlite3.Row]:
