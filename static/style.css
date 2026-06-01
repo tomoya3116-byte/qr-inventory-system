@@ -444,6 +444,12 @@ body {
   color: var(--primary-dark);
 }
 
+.mini-button--locked,
+.primary-button--locked {
+  background: #f8f9fd;
+  color: var(--muted);
+}
+
 .danger-link-button {
   width: 100%;
   margin-top: 14px;
