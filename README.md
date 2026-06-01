@@ -73,12 +73,13 @@ http://127.0.0.1:8000
 http://127.0.0.1:8000/login
 ```
 
-管理者パスワードは環境変数 `QR_INVENTORY_ADMIN_PASSWORD` を優先します。未設定時は開発用の初期パスワード `admin123` を使用します。運用時は必ず環境変数を設定してください。
+管理者パスワードは環境変数 `QR_INVENTORY_ADMIN_PASSWORD` を優先します。未設定時は開発用の初期パスワード `admin123` を使用します。運用時は必ず環境変数を設定してください。ログイン状態のCookie署名には `QR_INVENTORY_SESSION_SECRET` を利用でき、未設定時は開発用の固定値を使います。複数人で使う環境では推測されにくい値を設定してください。
 
 macOS / Linux例:
 
 ```bash
 export QR_INVENTORY_ADMIN_PASSWORD='任意の強いパスワード'
+export QR_INVENTORY_SESSION_SECRET='任意の長いランダム文字列'
 python -m uvicorn src.web_app:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -86,6 +87,7 @@ Windows PowerShell例:
 
 ```powershell
 $env:QR_INVENTORY_ADMIN_PASSWORD = '任意の強いパスワード'
+$env:QR_INVENTORY_SESSION_SECRET = '任意の長いランダム文字列'
 python -m uvicorn src.web_app:app --reload --host 127.0.0.1 --port 8000
 ```
 

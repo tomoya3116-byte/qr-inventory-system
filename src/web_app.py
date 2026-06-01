@@ -119,7 +119,7 @@ def _login_redirect(request: Request) -> RedirectResponse:
     next_url = request.url.path
     if request.url.query:
         next_url = f"{next_url}?{request.url.query}"
-    login_url = f"/login?next={quote(next_url, safe='/?:=&')}"
+    login_url = f"/login?next={quote(next_url, safe='/')}"
     return RedirectResponse(login_url, status_code=303)
 
 

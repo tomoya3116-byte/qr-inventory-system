@@ -18,7 +18,12 @@
   <div class="card-actions" aria-label="品目操作">
     <a class="mini-button" href="/stock-in?item_id={{ item.item_id }}">入庫</a>
     <a class="mini-button" href="/stock-out?item_id={{ item.item_id }}">出庫</a>
-    <a class="mini-button" href="/stock-adjust?item_id={{ item.item_id }}">棚卸</a>
-    <a class="mini-button" href="/items/{{ item.item_id }}/edit">編集</a>
+    {% if is_admin_logged_in %}
+      <a class="mini-button" href="/stock-adjust?item_id={{ item.item_id }}">棚卸</a>
+      <a class="mini-button" href="/items/{{ item.item_id }}/edit">編集</a>
+    {% else %}
+      <a class="mini-button mini-button--locked" href="/login?next=/stock-adjust?item_id={{ item.item_id }}" aria-label="管理者ログイン後に棚卸修正">🔒 棚卸</a>
+      <a class="mini-button mini-button--locked" href="/login?next=/items/{{ item.item_id }}/edit" aria-label="管理者ログイン後に編集">🔒 編集</a>
+    {% endif %}
   </div>
 </article>
