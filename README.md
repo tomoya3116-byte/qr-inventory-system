@@ -1,23 +1,22 @@
 # qr-inventory-system
 
-QR code based inventory management system using Python and SQLite.
+QR code based inventory management system using Python, SQLite, and FastAPI.
 
 ## 概要
 
-業務用の貯蔵品管理を想定した、CUI / GUI / Web対応の在庫管理システムです。
+業務用の貯蔵品管理を想定した、Webブラウザ対応の在庫管理システムです。
 品目IDまたはQRコードを入力して検索し、入庫・出庫・棚卸修正・履歴確認に加えて、品目マスタの一覧・登録・編集・削除を行えます。
 
 ## 現在の開発状況
 
-現在は Ver2.0 Web版として、CUI版・GUI版を継続利用できる状態を保ちながら、FastAPIベースのWeb版を整備しています。
-Web版には、管理者ログイン、品目マスタ管理、入出庫、棚卸修正、CSV取込・CSV出力、QRコード生成、ラベル印刷、DBバックアップ・復旧、操作ログ、検索・絞り込み・並び替え、QRスキャン運用を追加済みです。
+現在は Ver2.0 Web版に開発対象を集約しています。
+管理者ログイン、品目マスタ管理、入出庫、棚卸修正、CSV取込・CSV出力、QRコード生成、ラベル印刷、DBバックアップ・復旧、操作ログ、検索・絞り込み・並び替え、QRスキャン運用を追加済みです。
 
 ## 主な機能
 
-- **CUI版**: 品目検索、入庫、出庫、品目一覧、履歴確認、品目マスタ管理、棚卸修正、CSV取込などをターミナルから操作できます。
-- **GUI版**: 現場作業者向けの通常メニューと、危険操作・管理操作をまとめた管理者メニューを分離しています。
 - **Web版**: スマートフォンやPCブラウザから、品目一覧、品目検索、入庫、出庫、最低在庫アラート、管理者機能を利用できます。
 - **実用機能**: CSV取込・CSV出力、QRコード生成、ラベル印刷用HTML生成、DBバックアップ、DB復旧、操作ログ、QRスキャン運用に対応しています。
+- **運用機能**: 環境変数によるDB保存先、管理者パスワード、セッション署名キー、QRコードURLの設定に対応しています。
 
 ## クイックスタート
 
@@ -28,41 +27,29 @@ Web版には、管理者ログイン、品目マスタ管理、入出庫、棚�
 pip install -r requirements.txt
 ```
 
-3. 使いたい画面に合わせて起動します。
+3. Webアプリを起動します。
 
 ```bash
-# CUI版
-python src/main.py
-
-# GUI版
-python src/gui_main.py
-
-# Web版（PCローカル確認）
 python -m uvicorn src.web_app:app --reload --host 127.0.0.1 --port 8000
 ```
 
 初回実行時に `data/inventory.db` が自動作成され、テーブル初期化とサンプルデータ投入が行われます。
-Web版を起動した場合は、PCブラウザで `http://127.0.0.1:8000` にアクセスしてください。
+起動後、PCブラウザで `http://127.0.0.1:8000` にアクセスしてください。
 
 ## ドキュメント
 
 | ドキュメント | 内容 |
 | --- | --- |
 | [`docs/README.md`](docs/README.md) | ドキュメント全体の目次と分類 |
-| [`docs/cui_usage.md`](docs/cui_usage.md) | CUI版のサンプルデータ、基本操作、動作確認例 |
-| [`docs/gui_usage.md`](docs/gui_usage.md) | GUI版の起動方法、通常メニュー、管理者メニュー、動作確認例 |
 | [`docs/web_usage.md`](docs/web_usage.md) | Web版の起動方法、管理者ログイン、スマートフォン接続、Web機能一覧 |
-| [`docs/feature_usage.md`](docs/feature_usage.md) | 品目マスタ管理、最低在庫、棚卸修正、QR、ラベル、バックアップ、CSV取込などの機能別手順 |
 | [`docs/production_setup.md`](docs/production_setup.md) | 環境変数、ローカル運用、VPS / クラウド運用、バックアップ方針 |
 | [`docs/schema.md`](docs/schema.md) | SQLite の主要テーブルとカラム |
 | [`docs/v2_spec.md`](docs/v2_spec.md) | Ver2.0 Web版の仕様書 |
-| [`docs/roadmap.md`](docs/roadmap.md) | 今後の開発候補と優先度 |
 
-## バージョン方針
+## 整理方針
 
-- Ver1.0 は、既存のCUI版およびGUI版を中心としたデスクトップ版です。
-- Ver2.0 は、スマートフォンやPCブラウザから利用できるWebアプリ版です。
-- 古いPhase単位の作業メモは整理し、現在の利用・運用・保守に必要なドキュメントを `docs/README.md` に集約しています。
+環境整備のため、旧CUI版・旧デスクトップGUI版のエントリポイントと専用ドキュメントは削除し、日常利用と運用保守の対象をWeb版に一本化しています。
+生成物ディレクトリはアプリケーション実行時に必要に応じて自動作成されるため、空ディレクトリ維持用ファイルは置かない方針です。
 
 ## ライセンス
 
