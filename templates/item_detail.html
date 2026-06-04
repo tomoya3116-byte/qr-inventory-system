@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}品目詳細 | QR在庫管理 Web{% endblock %}
+{% block title %}{{ item.item_name if item else '品目詳細' }} | QR在庫管理 Web{% endblock %}
 {% block page_title %}品目詳細{% endblock %}
 {% block content %}
 {% if message %}
@@ -7,33 +7,89 @@
 {% endif %}
 
 {% if item %}
-<section class="section-card">
-  <div class="section-heading">
+<section class="section-card item-detail-hero {% if is_low_stock %}item-detail-hero--alert{% endif %}">
+  <div class="section-heading item-detail-heading">
     <div>
       <p class="eyebrow">Item Detail</p>
       <h2>{{ item.item_name }}</h2>
+      <p class="item-id">{{ item.item_id }}</p>
     </div>
-    <p>{{ item.item_id }}</p>
+    <div class="stock-pill {% if is_low_stock %}stock-pill--alert{% endif %}">
+      現在庫 {{ item.current_stock }} {{ item.unit }}
+    </div>
   </div>
-  {% include "partials/item_card.html" %}
+  {% if is_low_stock %}
+    <div class="message message--error item-detail-alert" role="alert">
+      最低在庫割れです。現在庫 {{ item.current_stock }} {{ item.unit }} / 最低在庫 {{ item.min_stock }} {{ item.unit }}
+    </div>
+  {% endif %}
+  <div class="item-detail-actions" aria-label="品目操作">
+    <a class="primary-button" href="{{ stock_in_url }}">入庫する</a>
+    <a class="danger-button" href="{{ stock_out_url }}">出庫する</a>
+    {% if is_admin_logged_in %}
+      <a class="secondary-button" href="{{ edit_url }}">編集する</a>
+      <a class="secondary-button" href="{{ qr_code_url }}">QRコードを見る</a>
+      <a class="secondary-button" href="{{ label_url }}">ラベル印刷</a>
+    {% else %}
+      <a class="secondary-button primary-button--locked" href="{{ edit_login_url }}">🔒 編集する</a>
+      <a class="secondary-button primary-button--locked" href="{{ qr_code_login_url }}">🔒 QRコードを見る</a>
+      <a class="secondary-button primary-button--locked" href="{{ label_login_url }}">🔒 ラベル印刷</a>
+    {% endif %}
+  </div>
 </section>
 
 <section class="section-card">
-  <h2>詳細情報</h2>
-  <dl class="scan-meta-grid">
-    <div><dt>現在庫</dt><dd>{{ item.current_stock }} {{ item.unit }}</dd></div>
-    <div><dt>最低在庫</dt><dd>{{ item.min_stock }} {{ item.unit }}</dd></div>
-    <div><dt>保管場所</dt><dd>{{ item.location or '—' }}</dd></div>
-    <div><dt>メーカー</dt><dd>{{ item.maker or '—' }}</dd></div>
+  <h2>基本情報・現在庫</h2>
+  <dl class="item-detail-grid">
+    <div><dt>品目ID</dt><dd>{{ item.item_id }}</dd></div>
+    <div><dt>品目名</dt><dd>{{ item.item_name }}</dd></div>
     <div><dt>型式</dt><dd>{{ item.model_number or '—' }}</dd></div>
-    <div><dt>QRスキャンURL</dt><dd><code>{{ scan_url }}</code></dd></div>
+    <div><dt>メーカー</dt><dd>{{ item.maker or '—' }}</dd></div>
+    <div><dt>保管場所</dt><dd>{{ item.location or '—' }}</dd></div>
+    <div><dt>単位</dt><dd>{{ item.unit or '—' }}</dd></div>
+    <div><dt>最低在庫</dt><dd>{{ item.min_stock }} {{ item.unit }}</dd></div>
+    <div><dt>現在庫</dt><dd>{{ item.current_stock }} {{ item.unit }}</dd></div>
+    <div class="item-detail-grid__wide"><dt>備考</dt><dd>{{ item.note or '—' }}</dd></div>
+    <div class="item-detail-grid__wide"><dt>QRスキャンURL</dt><dd><code>{{ scan_url }}</code></dd></div>
   </dl>
-  {% if item.note %}<p class="note">{{ item.note }}</p>{% endif %}
-  <div class="action-row action-row--wrap">
-    <a class="primary-button" href="{{ stock_in_url }}">入庫する</a>
-    <a class="danger-button" href="{{ stock_out_url }}">出庫する</a>
-    <a class="secondary-button" href="{{ scan_url }}">QRスキャン画面</a>
+</section>
+
+<section class="section-card">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Recent Transactions</p>
+      <h2>入出庫履歴</h2>
+    </div>
+    <p>最大20件</p>
   </div>
+  {% if transactions %}
+    <div class="transaction-list">
+      {% for transaction in transactions %}
+        <article class="transaction-card transaction-card--{{ transaction.transaction_type | lower }}">
+          <div class="transaction-card__top">
+            <div>
+              <p class="item-id">履歴ID {{ transaction.transaction_id }}</p>
+              <h3>
+                {% if transaction.transaction_type == 'IN' %}入庫
+                {% elif transaction.transaction_type == 'OUT' %}出庫
+                {% elif transaction.transaction_type == 'ADJUST' %}棚卸修正
+                {% else %}{{ transaction.transaction_type }}{% endif %}
+              </h3>
+            </div>
+            <span class="stock-pill">{{ transaction.quantity }} {{ item.unit }}</span>
+          </div>
+          <dl class="transaction-meta">
+            <div><dt>処理日時</dt><dd>{{ transaction.transaction_date }}</dd></div>
+            <div><dt>処理後在庫</dt><dd>{{ transaction.stock_after }} {{ item.unit }}</dd></div>
+            <div><dt>作業者</dt><dd>{{ transaction.operator or '—' }}</dd></div>
+            <div><dt>備考</dt><dd>{{ transaction.note or '—' }}</dd></div>
+          </dl>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty-message">この品目の入出庫履歴はまだありません。</p>
+  {% endif %}
 </section>
 {% endif %}
 {% endblock %}

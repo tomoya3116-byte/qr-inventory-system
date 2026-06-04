@@ -1,4 +1,4 @@
-"""FastAPI web application for QR inventory system Ver2.0 Phase 9."""
+"""FastAPI web application for QR inventory system Ver2.0 Phase 12."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="QR Inventory System Web",
     description="スマートフォン・PCブラウザ向け在庫管理Webアプリ",
-    version="2.0.0-phase11",
+    version="2.0.0-phase12",
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -791,22 +791,45 @@ async def delete_item(
 
 @app.get("/items/{item_id}")
 async def item_detail(request: Request, item_id: str):
-    """Show a read-only item detail page."""
+    """Show item master data, current stock, recent history, and actions."""
     normalized_item_id = item_id.strip()
     item = database.find_item_by_id(normalized_item_id)
     message = "" if item is not None else "品目が見つかりません"
     canonical_item_id = item["item_id"] if item is not None else normalized_item_id
+    encoded_item_id = quote(canonical_item_id, safe="")
+    transactions = (
+        database.get_transactions_by_item_id(canonical_item_id, limit=20)
+        if item is not None
+        else []
+    )
     return templates.TemplateResponse(
         request,
         "item_detail.html",
         _context(
             request,
             item=item,
+            transactions=transactions,
             message=message,
             message_type="error",
+            is_low_stock=(
+                item is not None
+                and int(item["current_stock"]) <= int(item["min_stock"])
+            ),
             stock_in_url=_item_id_query_url("/stock-in", canonical_item_id),
             stock_out_url=_item_id_query_url("/stock-out", canonical_item_id),
-            scan_url=f"/scan/{quote(canonical_item_id, safe='')}",
+            edit_url=f"/items/{encoded_item_id}/edit",
+            qr_code_url=f"/qr-codes?item_id={encoded_item_id}",
+            label_url=f"/labels?item_id={encoded_item_id}",
+            edit_login_url=(
+                f"/login?next={quote(f'/items/{encoded_item_id}/edit', safe='/')}"
+            ),
+            qr_code_login_url=(
+                f"/login?next={quote(f'/qr-codes?item_id={encoded_item_id}', safe='/')}"
+            ),
+            label_login_url=(
+                f"/login?next={quote(f'/labels?item_id={encoded_item_id}', safe='/')}"
+            ),
+            scan_url=f"/scan/{encoded_item_id}",
         ),
         status_code=404 if item is None else 200,
     )
@@ -1105,12 +1128,23 @@ async def csv_import_preview_placeholder(request: Request):
     )
 
 @app.get("/qr-codes")
-async def qr_codes_form(request: Request):
+async def qr_codes_form(request: Request, item_id: str = ""):
     """Show QR code generation form."""
+    normalized_item_id = item_id.strip()
+    item = database.find_item_by_id(normalized_item_id) if normalized_item_id else None
+    message = "品目が見つかりません" if normalized_item_id and item is None else ""
+    display_item_id = item["item_id"] if item is not None else normalized_item_id
     return templates.TemplateResponse(
         request,
         "qr_codes.html",
-        _context(request, item_count=len(database.list_items())),
+        _context(
+            request,
+            item_count=len(database.list_items()),
+            form={"item_id": display_item_id},
+            item=item,
+            message=message,
+            message_type="error",
+        ),
     )
 
 
@@ -1191,37 +1225,60 @@ async def qr_code_all(request: Request):
 
 
 @app.get("/labels")
-async def labels_form(request: Request):
+async def labels_form(request: Request, item_id: str = ""):
     """Show QR label print HTML generation form."""
+    normalized_item_id = item_id.strip()
+    item = database.find_item_by_id(normalized_item_id) if normalized_item_id else None
+    message = "品目が見つかりません" if normalized_item_id and item is None else ""
+    display_item_id = item["item_id"] if item is not None else normalized_item_id
     return templates.TemplateResponse(
         request,
         "labels.html",
-        _context(request, item_count=len(database.list_items())),
+        _context(
+            request,
+            item_count=len(database.list_items()),
+            form={"item_id": display_item_id},
+            item=item,
+            message=message,
+            message_type="error",
+        ),
     )
 
 
 @app.post("/labels/generate")
-async def labels_generate(request: Request):
+async def labels_generate(request: Request, item_id: str = Form("")):
     """Generate printable QR label HTML using label_utils.py."""
     message = ""
     message_type = "success"
     saved_path = None
+    normalized_item_id = item_id.strip()
+    item = None
 
     try:
-        items = database.list_items()
+        if normalized_item_id:
+            normalized_item_id = _normalize_item_id(item_id)
+            item = database.find_item_by_id(normalized_item_id)
+            if item is None:
+                raise LookupError("品目が見つかりません")
+            items = [item]
+            filename_prefix = f"qr_label_{item['item_id']}"
+        else:
+            items = database.list_items()
+            filename_prefix = "qr_labels"
         if not items:
             raise ValueError("品目が登録されていません。")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         saved_path = label_utils.generate_qr_label_sheet(
-            items, label_utils.LABEL_DIR / f"qr_labels_{timestamp}.html"
+            items, label_utils.LABEL_DIR / f"{filename_prefix}_{timestamp}.html"
         )
         message = "QRラベル印刷用HTMLを生成しました。"
         _record_audit_log(
             "ラベル印刷",
+            **_item_audit_fields(item),
             quantity=len(items),
             message=f"{message} 保存先: {_format_path(saved_path)}",
         )
-    except ValueError as error:
+    except (LookupError, ValueError) as error:
         message = str(error)
         message_type = "error"
 
@@ -1234,6 +1291,10 @@ async def labels_generate(request: Request):
             message_type=message_type,
             saved_path=_format_path(saved_path) if saved_path else "",
             item_count=len(database.list_items()),
+            form={
+                "item_id": item["item_id"] if item is not None else normalized_item_id
+            },
+            item=item,
         ),
     )
 
