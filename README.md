@@ -9,8 +9,8 @@ QR code based inventory management system using Python and SQLite.
 
 ## 現在の開発状況
 
-現在は Ver2.0 Web Phase 11 相当まで進んでいます。
-CUI版・GUI版を継続利用できる状態を保ちながら、FastAPIベースのWeb版に管理者ログイン、品目マスタ管理、入出庫、棚卸修正、CSV取込・CSV出力、QRコード生成、ラベル印刷、DBバックアップ・復旧、操作ログ、検索・絞り込み・並び替え、QRスキャン運用を追加しています。
+現在は Ver2.0 Web版として、CUI版・GUI版を継続利用できる状態を保ちながら、FastAPIベースのWeb版を整備しています。
+Web版には、管理者ログイン、品目マスタ管理、入出庫、棚卸修正、CSV取込・CSV出力、QRコード生成、ラベル印刷、DBバックアップ・復旧、操作ログ、検索・絞り込み・並び替え、QRスキャン運用を追加済みです。
 
 ## 主な機能
 
@@ -48,25 +48,21 @@ Web版を起動した場合は、PCブラウザで `http://127.0.0.1:8000` に�
 
 | ドキュメント | 内容 |
 | --- | --- |
+| [`docs/README.md`](docs/README.md) | ドキュメント全体の目次と分類 |
 | [`docs/cui_usage.md`](docs/cui_usage.md) | CUI版のサンプルデータ、基本操作、動作確認例 |
 | [`docs/gui_usage.md`](docs/gui_usage.md) | GUI版の起動方法、通常メニュー、管理者メニュー、動作確認例 |
 | [`docs/web_usage.md`](docs/web_usage.md) | Web版の起動方法、管理者ログイン、スマートフォン接続、Web機能一覧 |
 | [`docs/feature_usage.md`](docs/feature_usage.md) | 品目マスタ管理、最低在庫、棚卸修正、QR、ラベル、バックアップ、CSV取込などの機能別手順 |
+| [`docs/production_setup.md`](docs/production_setup.md) | 環境変数、ローカル運用、VPS / クラウド運用、バックアップ方針 |
 | [`docs/schema.md`](docs/schema.md) | SQLite の主要テーブルとカラム |
 | [`docs/v2_spec.md`](docs/v2_spec.md) | Ver2.0 Web版の仕様書 |
-| [`docs/web_external_access.md`](docs/web_external_access.md) | Ver2.0 Web Phase 5 の外部公開テスト手順 |
-| [`docs/production_setup.md`](docs/production_setup.md) | Ver2.0 Web Phase 6 の本番運用準備ガイド |
-| [`docs/deployment_plan.md`](docs/deployment_plan.md) | Ver2.0 Web Phase 7 のVPS / クラウド公開設計 |
-| [`docs/roadmap.md`](docs/roadmap.md) | Ver2.0 Web Phase 11 以降のロードマップ |
+| [`docs/roadmap.md`](docs/roadmap.md) | 今後の開発候補と優先度 |
 
 ## バージョン方針
 
 - Ver1.0 は、既存のCUI版およびGUI版を中心としたデスクトップ版です。
-- Ver2.0 は、スマートフォンやPCブラウザから利用できるWebアプリ版として開発中です。
-- Ver2.0 Web Phase 8 では、Web操作の操作ログ・監査ログを管理者向けに追加しています。
-- Ver2.0 Web Phase 9 では、在庫データや入出庫履歴をExcelで確認・保管・報告しやすいCSV出力機能を追加しています。
-- Ver2.0 Web Phase 10 では、品目一覧と品目検索の検索・絞り込み・並び替え機能を強化しています。
-- Ver2.0 Web Phase 11 では、スマートフォンでQRコードを読み取って品目確認・入庫・出庫へ進めるQRスキャン運用を追加しています。
+- Ver2.0 は、スマートフォンやPCブラウザから利用できるWebアプリ版です。
+- 古いPhase単位の作業メモは整理し、現在の利用・運用・保守に必要なドキュメントを `docs/README.md` に集約しています。
 
 ## ライセンス
 

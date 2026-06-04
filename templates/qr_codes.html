@@ -4,7 +4,7 @@
 {% block content %}
 {% if message %}<div class="message message--{{ message_type }}">{{ message }}</div>{% endif %}
 <section class="hero-card">
-  <p class="eyebrow">Web Phase 3</p>
+  <p class="eyebrow">QRコード生成</p>
   <h2>QRコード生成</h2>
   <p>QRコードの中身は <code>/scan/{品目ID}</code> 形式のWebスキャンURLです。スマホで読み取ると入庫・出庫・詳細確認へ進めます。</p>
   {% if item %}<p class="note">選択中: {{ item.item_id }} / {{ item.item_name }}</p>{% endif %}

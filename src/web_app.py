@@ -1,4 +1,4 @@
-"""FastAPI web application for QR inventory system Ver2.0 Phase 12."""
+"""FastAPI web application for QR inventory system Ver2.0."""
 
 from __future__ import annotations
 
@@ -559,7 +559,7 @@ async def items(request: Request):
 
 @app.get("/admin")
 async def admin_menu(request: Request):
-    """Show the Web Phase 2 administrator menu."""
+    """Show the administrator menu."""
     items = database.list_items()
     low_stock_items = database.list_low_stock_items()
     return templates.TemplateResponse(

@@ -47,7 +47,3 @@ This project uses or plans to use the following third-party software and runtime
 - License: Apache License 2.0
 - Notice: Used by FastAPI to parse HTML form submissions.
 
-
-## Web Phase 3
-
-Web Phase 3では追加ライブラリはありません。既存のFastAPI/Jinja2/python-multipart/qrcode/Pillow/CustomTkinterを継続利用します。
