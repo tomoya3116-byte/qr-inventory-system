@@ -459,7 +459,7 @@ async def login_form(request: Request, next: str = "/admin"):
     """Show the administrator login form."""
     return templates.TemplateResponse(
         request,
-        "login.html",
+        "auth/login.html",
         _context(request, next_url=_safe_next_url(next)),
     )
 
@@ -486,7 +486,7 @@ async def login_submit(
     _record_audit_log("ログイン失敗", message="管理者ログインに失敗しました。")
     return templates.TemplateResponse(
         request,
-        "login.html",
+        "auth/login.html",
         _context(
             request,
             next_url=next_url,
@@ -514,7 +514,7 @@ async def index(request: Request):
     low_stock_items = database.list_low_stock_items()
     return templates.TemplateResponse(
         request,
-        "index.html",
+        "dashboard/index.html",
         _context(
             request,
             item_count=len(items),
@@ -532,7 +532,7 @@ async def scan_item(request: Request, item_id: str):
     canonical_item_id = item["item_id"] if item is not None else normalized_item_id
     return templates.TemplateResponse(
         request,
-        "scan.html",
+        "stock/scan.html",
         _context(
             request,
             item=item,
@@ -552,7 +552,7 @@ async def items(request: Request):
     """Show registered items with search and filtering controls."""
     return templates.TemplateResponse(
         request,
-        "items.html",
+        "inventory/items.html",
         _context(request, **_item_search_context(request)),
     )
 
@@ -564,7 +564,7 @@ async def admin_menu(request: Request):
     low_stock_items = database.list_low_stock_items()
     return templates.TemplateResponse(
         request,
-        "admin.html",
+        "admin/admin.html",
         _context(
             request,
             item_count=len(items),
@@ -578,7 +578,7 @@ async def item_new_form(request: Request):
     """Show the item registration form."""
     return templates.TemplateResponse(
         request,
-        "item_new.html",
+        "inventory/item_new.html",
         _context(request),
     )
 
@@ -653,7 +653,7 @@ async def create_item(
 
     return templates.TemplateResponse(
         request,
-        "item_new.html",
+        "inventory/item_new.html",
         _context(
             request,
             message=message,
@@ -671,7 +671,7 @@ async def item_edit_form(request: Request, item_id: str):
     message = "品目が見つかりません" if item is None else ""
     return templates.TemplateResponse(
         request,
-        "item_edit.html",
+        "inventory/item_edit.html",
         _context(request, item=item, message=message, message_type="error"),
     )
 
@@ -734,7 +734,7 @@ async def update_item(
 
     return templates.TemplateResponse(
         request,
-        "item_edit.html",
+        "inventory/item_edit.html",
         _context(request, item=item, message=message, message_type=message_type),
     )
 
@@ -746,7 +746,7 @@ async def item_delete_form(request: Request, item_id: str):
     message = "品目が見つかりません" if item is None else ""
     return templates.TemplateResponse(
         request,
-        "item_delete.html",
+        "inventory/item_delete.html",
         _context(request, item=item, message=message, message_type="error"),
     )
 
@@ -784,7 +784,7 @@ async def delete_item(
 
     return templates.TemplateResponse(
         request,
-        "item_delete.html",
+        "inventory/item_delete.html",
         _context(request, item=item, message=message, message_type=message_type),
     )
 
@@ -804,7 +804,7 @@ async def item_detail(request: Request, item_id: str):
     )
     return templates.TemplateResponse(
         request,
-        "item_detail.html",
+        "inventory/item_detail.html",
         _context(
             request,
             item=item,
@@ -856,7 +856,7 @@ async def search(request: Request):
     )
     return templates.TemplateResponse(
         request,
-        "search.html",
+        "inventory/search.html",
         _context(
             request,
             **search_context,
@@ -871,7 +871,7 @@ async def stock_in_form(request: Request, item_id: str = ""):
     """Show stock-in form, optionally prefilled from a QR scan."""
     return templates.TemplateResponse(
         request,
-        "stock_in.html",
+        "stock/stock_in.html",
         _context(request, **_stock_form_context(item_id)),
     )
 
@@ -917,7 +917,7 @@ async def stock_in_submit(
 
     return templates.TemplateResponse(
         request,
-        "stock_in.html",
+        "stock/stock_in.html",
         _context(
             request,
             message=message,
@@ -939,7 +939,7 @@ async def stock_out_form(request: Request, item_id: str = ""):
     """Show stock-out form, optionally prefilled from a QR scan."""
     return templates.TemplateResponse(
         request,
-        "stock_out.html",
+        "stock/stock_out.html",
         _context(request, **_stock_form_context(item_id)),
     )
 
@@ -985,7 +985,7 @@ async def stock_out_submit(
 
     return templates.TemplateResponse(
         request,
-        "stock_out.html",
+        "stock/stock_out.html",
         _context(
             request,
             message=message,
@@ -1010,7 +1010,7 @@ async def stock_adjust_form(request: Request, item_id: str = ""):
     message = "品目が見つかりません" if normalized_item_id and item is None else ""
     return templates.TemplateResponse(
         request,
-        "stock_adjust.html",
+        "stock/stock_adjust.html",
         _context(
             request,
             item=item,
@@ -1070,7 +1070,7 @@ async def adjust_stock(
 
     return templates.TemplateResponse(
         request,
-        "stock_adjust.html",
+        "stock/stock_adjust.html",
         _context(
             request,
             message=message,
@@ -1095,7 +1095,7 @@ async def low_stock(request: Request):
     message = "最低在庫を下回っている品目はありません。" if not low_stock_items else ""
     return templates.TemplateResponse(
         request,
-        "low_stock.html",
+        "inventory/low_stock.html",
         _context(request, items=low_stock_items, message=message),
     )
 
@@ -1105,7 +1105,7 @@ async def csv_import_form(request: Request):
     """Show the CSV import placeholder form."""
     return templates.TemplateResponse(
         request,
-        "csv_import.html",
+        "admin/csv_import.html",
         _context(request),
     )
 
@@ -1119,7 +1119,7 @@ async def csv_import_preview_placeholder(request: Request):
     )
     return templates.TemplateResponse(
         request,
-        "csv_import.html",
+        "admin/csv_import.html",
         _context(
             request,
             message="CSV取込機能は準備中です。今回はファイル選択フォームのみ利用できます。",
@@ -1136,7 +1136,7 @@ async def qr_codes_form(request: Request, item_id: str = ""):
     display_item_id = item["item_id"] if item is not None else normalized_item_id
     return templates.TemplateResponse(
         request,
-        "qr_codes.html",
+        "admin/qr_codes.html",
         _context(
             request,
             item_count=len(database.list_items()),
@@ -1174,7 +1174,7 @@ async def qr_code_single(request: Request, item_id: str = Form(...)):
 
     return templates.TemplateResponse(
         request,
-        "qr_codes.html",
+        "admin/qr_codes.html",
         _context(
             request,
             message=message,
@@ -1208,7 +1208,7 @@ async def qr_code_all(request: Request):
 
     return templates.TemplateResponse(
         request,
-        "qr_codes.html",
+        "admin/qr_codes.html",
         _context(
             request,
             message=message,
@@ -1233,7 +1233,7 @@ async def labels_form(request: Request, item_id: str = ""):
     display_item_id = item["item_id"] if item is not None else normalized_item_id
     return templates.TemplateResponse(
         request,
-        "labels.html",
+        "admin/labels.html",
         _context(
             request,
             item_count=len(database.list_items()),
@@ -1284,7 +1284,7 @@ async def labels_generate(request: Request, item_id: str = Form("")):
 
     return templates.TemplateResponse(
         request,
-        "labels.html",
+        "admin/labels.html",
         _context(
             request,
             message=message,
@@ -1304,7 +1304,7 @@ async def db_backup_form(request: Request):
     """Show DB backup form and backup list."""
     return templates.TemplateResponse(
         request,
-        "db_backup.html",
+        "admin/db_backup.html",
         _context(request, backups=_format_backup_rows()),
     )
 
@@ -1329,7 +1329,7 @@ async def db_backup_create(request: Request):
 
     return templates.TemplateResponse(
         request,
-        "db_backup.html",
+        "admin/db_backup.html",
         _context(
             request,
             message=message,
@@ -1345,7 +1345,7 @@ async def db_restore_form(request: Request):
     """Show DB restore form with backup list."""
     return templates.TemplateResponse(
         request,
-        "db_restore.html",
+        "admin/db_restore.html",
         _context(request, backups=_format_backup_rows()),
     )
 
@@ -1386,7 +1386,7 @@ async def db_restore_execute(
 
     return templates.TemplateResponse(
         request,
-        "db_restore.html",
+        "admin/db_restore.html",
         _context(
             request,
             message=message,
@@ -1416,7 +1416,7 @@ async def exports(request: Request):
         )
     return templates.TemplateResponse(
         request,
-        "exports.html",
+        "admin/exports.html",
         _context(request, export_cards=export_cards),
     )
 
@@ -1451,6 +1451,6 @@ async def audit_logs(request: Request):
     """Show recent operation and audit logs for administrators."""
     return templates.TemplateResponse(
         request,
-        "audit_logs.html",
+        "admin/audit_logs.html",
         _context(request, audit_logs=database.list_audit_logs(limit=100)),
     )

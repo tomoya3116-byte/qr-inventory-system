@@ -46,6 +46,26 @@ python -m uvicorn src.web_app:app --reload --host 127.0.0.1 --port 8000
 | [`docs/schema.md`](docs/schema.md) | SQLite の主要テーブルとカラム |
 | [`docs/v2_spec.md`](docs/v2_spec.md) | Ver2.0 Web版の仕様書 |
 
+
+## リポジトリ構成
+
+用途ごとに保管場所を分け、Web版の実装・画面・静的アセット・運用資料を探しやすくしています。
+
+| パス | 内容 |
+| --- | --- |
+| `src/` | FastAPIアプリ、SQLite操作、QRコード・ラベル生成などのPython実装 |
+| `templates/layouts/` | Jinja2の共通レイアウト |
+| `templates/partials/` | 複数画面で再利用するJinja2部品 |
+| `templates/auth/` | ログインなど認証関連画面 |
+| `templates/dashboard/` | トップページ・ダッシュボード画面 |
+| `templates/inventory/` | 品目一覧、検索、品目マスタ管理、最低在庫画面 |
+| `templates/stock/` | QRスキャン、入庫、出庫、棚卸修正画面 |
+| `templates/admin/` | 管理者機能、CSV、QRコード、ラベル、バックアップ、ログ画面 |
+| `static/css/` | CSSファイル |
+| `static/js/` | JavaScriptファイル |
+| `examples/imports/` | CSV取込のサンプルファイル |
+| `docs/` | 利用・運用・仕様ドキュメント |
+
 ## 整理方針
 
 環境整備のため、旧CUI版・旧デスクトップGUI版のエントリポイントと専用ドキュメントは削除し、日常利用と運用保守の対象をWeb版に一本化しています。
