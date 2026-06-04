@@ -1,6 +1,6 @@
 # Third Party Notices
 
-This project uses or plans to use the following third-party software and runtimes.
+This project uses the following third-party software and runtimes.
 
 ## Python
 
@@ -16,11 +16,6 @@ This project uses or plans to use the following third-party software and runtime
 
 - License: MIT-CMU License
 - Notice: Used by the QR code image generation workflow for image output support.
-
-## CustomTkinter
-
-- License: MIT License
-- Notice: Used to provide the GUI application in `src/gui_main.py`.
 
 ## SQLite
 
