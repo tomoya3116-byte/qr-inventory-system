@@ -57,6 +57,7 @@ Web版を起動した場合は、PCブラウザで `http://127.0.0.1:8000` に�
 | [`docs/web_external_access.md`](docs/web_external_access.md) | Ver2.0 Web Phase 5 の外部公開テスト手順 |
 | [`docs/production_setup.md`](docs/production_setup.md) | Ver2.0 Web Phase 6 の本番運用準備ガイド |
 | [`docs/deployment_plan.md`](docs/deployment_plan.md) | Ver2.0 Web Phase 7 のVPS / クラウド公開設計 |
+| [`docs/roadmap.md`](docs/roadmap.md) | Ver2.0 Web Phase 11 以降のロードマップ |
 
 ## バージョン方針
 
