@@ -25,7 +25,7 @@
     <button class="primary-button" type="submit">全件QRコード生成</button>
   </form>
   {% if result %}
-    <p class="path-box">生成件数: {{ result.count }} 件 / 保存先: qr_codes/</p>
+    <p class="path-box">生成件数: {{ result.count }} 件 / 保存先: {{ qr_code_dir }}</p>
     <details class="details-box"><summary>生成ファイル一覧</summary><ul>{% for path in saved_paths %}<li>{{ path }}</li>{% endfor %}</ul></details>
   {% endif %}
 </section>

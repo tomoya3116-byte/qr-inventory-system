@@ -92,7 +92,7 @@ http://192.168.1.10:8000
 - CSV取込: 管理者ログイン後、`/csv-import` でCSVファイルをアップロードし、取込前プレビューを確認してから品目マスタを登録・更新できます。対応文字コードは `utf-8-sig`, `utf-8`, `cp932`, `shift_jis` です。登録予定件数、更新予定件数、エラー件数、使用文字コードに加えて、CSV各行の処理区分（登録/更新/エラー）と主要項目を表示し、エラーがある場合は取込を実行できません。取込実行前には `backups/auto_csv_import_YYYYMMDD_HHMMSS.db` の自動バックアップを作成します。
 - CSV出力: 管理者ログイン後、`/exports` で品目マスタ、現在庫一覧、入出庫履歴、最低在庫アラート、操作ログをCSVダウンロードできます。CSVはExcelで日本語が文字化けしにくいUTF-8 BOM付きで、ファイル名は `item_master_YYYYMMDD_HHMMSS.csv` のように日付時刻を含みます。出力操作は操作ログに記録されます。
 - QRコード: 管理者ログイン後、`/qr-codes` で品目IDまたはQRコードを指定した単品生成と、全品目分の一括生成を実行できます。既存の `src/qr_utils.py` を利用し、生成したPNGの保存先を画面に表示します。
-- ラベル印刷: 管理者ログイン後、`/labels` で既存の `src/label_utils.py` を利用し、`labels/qr_labels_YYYYMMDD_HHMMSS.html` を生成します。未生成のQR画像はラベルHTML生成時に自動生成されます。
-- DBバックアップ: 管理者ログイン後、`/db-backup` で `data/inventory.db` を `backups/inventory_YYYYMMDD_HHMMSS.db` として保存し、バックアップ一覧を表示します。
+- ラベル印刷: 管理者ログイン後、`/labels` で既存の `src/label_utils.py` を利用し、リポジトリルートの `labels/qr_labels_YYYYMMDD_HHMMSS.html` を生成します。未生成のQR画像はラベルHTML生成時に自動生成されます。
+- DBバックアップ: 管理者ログイン後、`/db-backup` でリポジトリルート基準の `data/inventory.db` を `backups/inventory_YYYYMMDD_HHMMSS.db` として保存し、バックアップ一覧を表示します。
 - DB復旧: 管理者ログイン後、`/db-restore` でバックアップ一覧から復旧元を選択します。復旧前に現在DBを `backups/auto_before_restore_YYYYMMDD_HHMMSS.db` として自動バックアップし、誤操作防止のため確認文字列 `RESTORE` の入力を要求します。
 - 操作ログ: 管理者ログイン後、`/audit-logs` で入庫、出庫、棚卸修正、品目登録・編集・削除、CSV取込フォーム送信、QRコード生成、ラベル印刷HTML生成、DBバックアップ、DB復旧、ログイン成功、ログイン失敗、ログアウトを新しい順に最大100件確認できます。操作日時、操作種別、対象品目ID、対象品目名、数量、メッセージをスマートフォン縦画面でも読みやすいカード形式で表示します。

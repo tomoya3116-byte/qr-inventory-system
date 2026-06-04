@@ -5,7 +5,7 @@
 {% if message %}<div class="message message--{{ message_type }}">{{ message }}</div>{% endif %}
 <section class="section-card">
   <h2>DBバックアップ</h2>
-  <p class="note">現在の data/inventory.db を backups/ にコピーします。</p>
+  <p class="note">現在の <code>{{ db_path }}</code> を <code>{{ backup_dir }}</code> にコピーします。</p>
   <form class="ios-form" action="/db-backup" method="post">
     <button class="primary-button" type="submit">バックアップ作成</button>
   </form>

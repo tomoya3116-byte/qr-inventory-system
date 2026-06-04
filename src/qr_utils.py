@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 from urllib.parse import quote
 
-QR_CODE_DIR = Path("qr_codes")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+QR_CODE_DIR = ROOT_DIR / "qr_codes"
 QR_SCAN_BASE_URL_ENV = "QR_INVENTORY_SCAN_BASE_URL"
 
 
