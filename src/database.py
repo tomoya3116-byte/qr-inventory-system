@@ -12,8 +12,19 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import unquote, urlparse
 
-DB_PATH = Path(os.getenv("QR_INVENTORY_DB_PATH", "data/inventory.db"))
-BACKUP_DIR = Path("backups")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+
+def _repo_relative_path(path_text: str) -> Path:
+    """Return an absolute path, anchoring relative paths at the repository root."""
+    path = Path(path_text)
+    if path.is_absolute():
+        return path
+    return ROOT_DIR / path
+
+
+DB_PATH = _repo_relative_path(os.getenv("QR_INVENTORY_DB_PATH", "data/inventory.db"))
+BACKUP_DIR = ROOT_DIR / "backups"
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 

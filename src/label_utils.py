@@ -12,7 +12,8 @@ if __package__:
 else:
     from qr_utils import QR_CODE_DIR, generate_item_qr_code
 
-LABEL_DIR = Path("labels")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+LABEL_DIR = ROOT_DIR / "labels"
 
 
 def _get_item_value(item: Mapping[str, object], key: str) -> Any:

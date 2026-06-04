@@ -27,6 +27,6 @@
 - Python実装は `src/` に集約します。
 - Jinja2テンプレートは用途別に `templates/auth/`、`templates/dashboard/`、`templates/inventory/`、`templates/stock/`、`templates/admin/` へ分け、共通レイアウトは `templates/layouts/`、再利用部品は `templates/partials/` に置きます。
 - 静的ファイルは種類別に `static/css/` と `static/js/` へ置きます。
-- 実行時に生成される `data/`、`backups/`、`qr_codes/`、`labels/` は自動作成されるため、通常はリポジトリに空ディレクトリを保持しません。
+- 実行時に生成される `data/`、`backups/`、`qr_codes/`、`labels/` はリポジトリルート基準で自動作成されるため、通常はリポジトリに空ディレクトリを保持しません。
 - CSV取込の見本など実装ではないファイルは `examples/` 配下に置きます。
 

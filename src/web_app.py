@@ -159,6 +159,16 @@ def _format_path(path: Path | None) -> str:
         return str(path)
 
 
+def _runtime_storage_context() -> dict[str, str]:
+    """Return repository-relative runtime storage paths for screen guidance."""
+    return {
+        "db_path": _format_path(database.DB_PATH),
+        "backup_dir": _format_path(database.BACKUP_DIR),
+        "qr_code_dir": _format_path(qr_utils.QR_CODE_DIR),
+        "label_dir": _format_path(label_utils.LABEL_DIR),
+    }
+
+
 def _format_backup_rows() -> list[dict[str, object]]:
     """Return backup metadata formatted for template display."""
     rows: list[dict[str, object]] = []
@@ -1144,6 +1154,7 @@ async def qr_codes_form(request: Request, item_id: str = ""):
             item=item,
             message=message,
             message_type="error",
+            **_runtime_storage_context(),
         ),
     )
 
@@ -1182,6 +1193,7 @@ async def qr_code_single(request: Request, item_id: str = Form(...)):
             saved_path=_format_path(saved_path) if saved_path else "",
             form={"item_id": normalized_item_id},
             item_count=len(database.list_items()),
+            **_runtime_storage_context(),
         ),
     )
 
@@ -1220,6 +1232,7 @@ async def qr_code_all(request: Request):
                 else []
             ),
             item_count=len(database.list_items()),
+            **_runtime_storage_context(),
         ),
     )
 
@@ -1241,6 +1254,7 @@ async def labels_form(request: Request, item_id: str = ""):
             item=item,
             message=message,
             message_type="error",
+            **_runtime_storage_context(),
         ),
     )
 
@@ -1295,6 +1309,7 @@ async def labels_generate(request: Request, item_id: str = Form("")):
                 "item_id": item["item_id"] if item is not None else normalized_item_id
             },
             item=item,
+            **_runtime_storage_context(),
         ),
     )
 
@@ -1305,7 +1320,7 @@ async def db_backup_form(request: Request):
     return templates.TemplateResponse(
         request,
         "admin/db_backup.html",
-        _context(request, backups=_format_backup_rows()),
+        _context(request, backups=_format_backup_rows(), **_runtime_storage_context()),
     )
 
 
@@ -1336,6 +1351,7 @@ async def db_backup_create(request: Request):
             message_type=message_type,
             backup_path=_format_path(backup_path) if backup_path else "",
             backups=_format_backup_rows(),
+            **_runtime_storage_context(),
         ),
     )
 
@@ -1346,7 +1362,7 @@ async def db_restore_form(request: Request):
     return templates.TemplateResponse(
         request,
         "admin/db_restore.html",
-        _context(request, backups=_format_backup_rows()),
+        _context(request, backups=_format_backup_rows(), **_runtime_storage_context()),
     )
 
 
@@ -1397,6 +1413,7 @@ async def db_restore_execute(
                 else None
             ),
             backups=_format_backup_rows(),
+            **_runtime_storage_context(),
         ),
     )
 
