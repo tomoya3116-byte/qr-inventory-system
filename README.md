@@ -4,7 +4,7 @@ QR code based inventory management system using Python and SQLite.
 
 ## 概要
 
-業務用の貯蔵品管理を想定した、CUIベースの在庫管理システムです。
+あいう業務用の貯蔵品管理を想定した、CUIベースの在庫管理システムです。
 品目IDまたはQRコードを入力して検索し、入庫・出庫・棚卸修正・履歴確認に加えて、品目マスタの一覧・登録・編集・削除を行えます。
 
 
