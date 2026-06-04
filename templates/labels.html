@@ -10,8 +10,11 @@
       <p>既存の label_utils.py を使い、A4印刷向けHTMLを labels/ に保存します。</p>
     </div>
   </div>
-  <p class="note">対象品目: {{ item_count }} 件。未生成のQR画像は自動生成されます。</p>
+  <p class="note">対象品目: {{ item_count }} 件。品目IDを空欄にすると全件、入力すると単品ラベルを生成します。未生成のQR画像は自動生成されます。</p>
+  {% if item %}<p class="note">選択中: {{ item.item_id }} / {{ item.item_name }}</p>{% endif %}
   <form class="ios-form" action="/labels/generate" method="post">
+    <label for="item_id">品目IDまたはQRコード（任意）</label>
+    <input id="item_id" name="item_id" value="{{ form.item_id if form else '' }}" autocomplete="off" placeholder="空欄なら全件">
     <button class="primary-button" type="submit">ラベル印刷用HTMLを生成</button>
   </form>
   {% if saved_path %}<p class="path-box">保存先: {{ saved_path }}</p>{% endif %}

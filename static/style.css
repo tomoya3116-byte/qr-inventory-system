@@ -1030,3 +1030,135 @@ body {
     z-index: 5;
   }
 }
+
+.item-detail-hero {
+  background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.item-detail-hero--alert {
+  border-color: #ffd0cc;
+  background: linear-gradient(135deg, #ffffff 0%, #fff7f6 100%);
+}
+
+.item-detail-heading {
+  align-items: flex-start;
+}
+
+.item-detail-heading h2 {
+  font-size: clamp(1.8rem, 7vw, 2.8rem);
+}
+
+.item-detail-alert {
+  margin: 14px 0 0;
+  box-shadow: none;
+}
+
+.item-detail-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.item-detail-actions .primary-button,
+.item-detail-actions .secondary-button,
+.item-detail-actions .danger-button {
+  width: 100%;
+}
+
+.item-detail-grid,
+.transaction-meta {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.item-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.item-detail-grid div,
+.transaction-meta div {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #f8f9fd;
+}
+
+.item-detail-grid dt,
+.transaction-meta dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.item-detail-grid dd,
+.transaction-meta dd {
+  margin: 0;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.item-detail-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.transaction-list {
+  display: grid;
+  gap: 12px;
+}
+
+.transaction-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: #ffffff;
+}
+
+.transaction-card--in {
+  border-left: 6px solid var(--success-text);
+}
+
+.transaction-card--out {
+  border-left: 6px solid var(--danger);
+}
+
+.transaction-card--adjust {
+  border-left: 6px solid var(--primary);
+}
+
+.transaction-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.transaction-card h3 {
+  margin: 2px 0 0;
+  font-size: 1.22rem;
+}
+
+.transaction-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .item-detail-heading {
+    flex-direction: column;
+  }
+
+  .item-detail-actions,
+  .item-detail-grid,
+  .transaction-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .transaction-card__top {
+    flex-direction: column;
+  }
+
+  .transaction-card__top .stock-pill {
+    width: 100%;
+    text-align: center;
+  }
+}

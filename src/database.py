@@ -1124,12 +1124,24 @@ def adjust_stock(
 
 
 def get_transactions_by_item_id(
-    item_id: str, db_path: Path = DB_PATH
+    item_id: str, db_path: Path = DB_PATH, limit: int | None = None
 ) -> list[sqlite3.Row]:
-    """Return transactions for an item ordered by newest first."""
+    """Return transactions for an item ordered by newest first.
+
+    When limit is provided, the result count is capped in the database layer so
+    Web screens do not need to slice stock history themselves.
+    """
+    lookup_key = normalize_item_lookup_key(item_id)
+    limit_sql = ""
+    parameters: list[object] = [lookup_key]
+    if limit is not None:
+        safe_limit = max(1, min(int(limit), 500))
+        limit_sql = "LIMIT ?"
+        parameters.append(safe_limit)
+
     with get_connection(db_path) as connection:
         rows = connection.execute(
-            """
+            f"""
             SELECT
                 transaction_id,
                 item_id,
@@ -1142,7 +1154,8 @@ def get_transactions_by_item_id(
             FROM transactions
             WHERE item_id = ?
             ORDER BY transaction_date DESC, transaction_id DESC
+            {limit_sql}
             """,
-            (item_id,),
+            parameters,
         ).fetchall()
     return rows
