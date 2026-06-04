@@ -8,6 +8,11 @@ QR code based inventory management system using Python and SQLite.
 品目IDまたはQRコードを入力して検索し、入庫・出庫・棚卸修正・履歴確認に加えて、品目マスタの一覧・登録・編集・削除を行えます。
 
 
+## 現在の開発状況
+
+現在は Ver2.0 Web Phase 11 相当まで進んでいます。
+CUI版・GUI版を継続利用できる状態を保ちながら、FastAPIベースのWeb版に管理者ログイン、品目マスタ管理、入出庫、棚卸修正、CSV取込・CSV出力、QRコード生成、ラベル印刷、DBバックアップ・復旧、操作ログ、検索・絞り込み・並び替え、QRスキャン運用を追加しています。
+
 ## バージョン方針
 
 - Ver1.0 は、既存のCUI版およびGUI版を中心としたデスクトップ版です。
@@ -19,6 +24,7 @@ QR code based inventory management system using Python and SQLite.
 - Ver2.0 Web Phase 8 では、Web操作の操作ログ・監査ログを管理者向けに追加しています。
 - Ver2.0 Web Phase 9 では、在庫データや入出庫履歴をExcelで確認・保管・報告しやすいCSV出力機能を追加しています。
 - Ver2.0 Web Phase 10 では、品目一覧と品目検索の検索・絞り込み・並び替え機能を強化しています。
+- Ver2.0 Web Phase 11 では、スマートフォンでQRコードを読み取って品目確認・入庫・出庫へ進めるQRスキャン運用を追加しています。
 
 ## セットアップ
 
